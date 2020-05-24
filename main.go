@@ -139,7 +139,7 @@ func main() {
 		AddItem(tview.NewFlex().
 			AddItem(tview.NewBox(), 0, 1, false).
 			AddItem(filterInput, 0, 3, true).
-			AddItem(tview.NewBox(), 0, 1, false), 1, 0, 1, 1, 50, 0, true)
+			AddItem(tview.NewBox(), 0, 1, false), 1, 0, 1, 1, 0, 0, true)
 
 	elements := []tview.Primitive{outputView, originalView, filterInput}
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
