@@ -191,7 +191,8 @@ func main() {
 			switch key {
 			case tcell.KeyEnter:
 				app.Stop()
-				fmt.Println(outputView.GetText(true))
+				fmt.Fprintln(os.Stderr, filterInput.GetText())
+				fmt.Fprint(os.Stdout, outputView.GetText(true))
 			}
 		})
 
