@@ -102,18 +102,20 @@ func main() {
 		fmt.Fprint(outputWriter, out)
 	}()
 
-	filterInput := tview.NewInputField().
+	filterInput := tview.NewInputField()
+	filterInput.
 		SetFieldBackgroundColor(0).
 		SetFieldTextColor(7).
 		SetChangedFunc(func(text string) {
 			go func() {
-				outputView.Clear()
 				out, err := doc.Filter(text)
 				if err != nil {
-					fmt.Fprintf(outputWriter, "Invalid filter")
+					filterInput.SetFieldTextColor(1)
 					return
 				}
 
+				filterInput.SetFieldTextColor(7)
+				outputView.Clear()
 				fmt.Fprint(outputWriter, out)
 				outputView.ScrollToBeginning()
 			}()
