@@ -15,6 +15,8 @@ import (
 	"github.com/rivo/tview"
 )
 
+var Version string
+
 type Options struct {
 	compact    bool
 	nullInput  bool
@@ -119,7 +121,6 @@ func (d *Document) Filter(filter string) (string, error) {
 
 func main() {
 	options := Options{}
-	filter := flag.String("f", ".", "initial filter")
 	flag.BoolVar(&options.compact, "c", false, "compact instead of pretty-printed output")
 	flag.BoolVar(&options.nullInput, "n", false, "use ```null` as the single input value")
 	flag.BoolVar(&options.slurp, "s", false, "read (slurp) all inputs into an array; apply filter to it")
@@ -127,7 +128,16 @@ func main() {
 	flag.BoolVar(&options.rawInput, "R", false, "read raw strings, not JSON texts")
 	flag.BoolVar(&options.monochrome, "M", false, "don't colorize JSON")
 	flag.BoolVar(&options.sortKeys, "S", false, "sort keys of objects on output")
+
+	filter := flag.String("f", ".", "initial filter")
+	version := flag.Bool("V", false, "print version and exit")
+
 	flag.Parse()
+
+	if *version {
+		fmt.Println("ijq " + Version)
+		return
+	}
 
 	app := tview.NewApplication()
 
