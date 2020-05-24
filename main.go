@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,8 +15,52 @@ import (
 	"github.com/rivo/tview"
 )
 
+type Options struct {
+	compact    bool
+	nullInput  bool
+	slurp      bool
+	rawOutput  bool
+	rawInput   bool
+	monochrome bool
+	sortKeys   bool
+}
+
+func (o *Options) ToSlice() []string {
+	opts := []string{}
+	if o.compact {
+		opts = append(opts, "-c")
+	}
+
+	if o.nullInput {
+		opts = append(opts, "-n")
+	}
+
+	if o.slurp {
+		opts = append(opts, "-s")
+	}
+
+	if o.rawOutput {
+		opts = append(opts, "-r")
+	}
+
+	if o.rawInput {
+		opts = append(opts, "-R")
+	}
+
+	if !o.monochrome {
+		opts = append(opts, "-C")
+	}
+
+	if o.sortKeys {
+		opts = append(opts, "-S")
+	}
+
+	return opts
+}
+
 type Document struct {
 	contents string
+	options  Options
 }
 
 func (d *Document) FromFile(filename string) error {
@@ -45,7 +90,8 @@ func (d *Document) FromStdin() error {
 }
 
 func (d *Document) Filter(filter string) (string, error) {
-	cmd := exec.Command("jq", "-C", filter)
+	args := append(d.options.ToSlice(), filter)
+	cmd := exec.Command("jq", args...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return "", err
@@ -66,6 +112,17 @@ func (d *Document) Filter(filter string) (string, error) {
 }
 
 func main() {
+	options := Options{}
+	filter := flag.String("f", ".", "initial filter")
+	flag.BoolVar(&options.compact, "c", false, "compact instead of pretty-printed output")
+	flag.BoolVar(&options.nullInput, "n", false, "use ```null` as the single input value")
+	flag.BoolVar(&options.slurp, "s", false, "read (slurp) all inputs into an array; apply filter to it")
+	flag.BoolVar(&options.rawOutput, "r", false, "output raw strings, not JSON texts")
+	flag.BoolVar(&options.rawInput, "R", false, "read raw strings, not JSON texts")
+	flag.BoolVar(&options.monochrome, "M", false, "don't colorize JSON")
+	flag.BoolVar(&options.sortKeys, "S", false, "sort keys of objects on output")
+	flag.Parse()
+
 	app := tview.NewApplication()
 
 	originalView := tview.NewTextView().SetDynamicColors(true)
@@ -81,10 +138,10 @@ func main() {
 
 	outputWriter := tview.ANSIWriter(outputView)
 
-	var doc Document
+	doc := Document{options: options}
 	go func() {
-		if len(os.Args) > 1 {
-			if err := doc.FromFile(os.Args[1]); err != nil {
+		if flag.Arg(0) != "" {
+			if err := doc.FromFile(flag.Arg(0)); err != nil {
 				log.Fatal(err)
 			}
 		} else {
@@ -93,7 +150,7 @@ func main() {
 			}
 		}
 
-		out, err := doc.Filter(".")
+		out, err := doc.Filter(*filter)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -104,6 +161,7 @@ func main() {
 
 	filterInput := tview.NewInputField()
 	filterInput.
+		SetText(*filter).
 		SetFieldBackgroundColor(0).
 		SetFieldTextColor(7).
 		SetChangedFunc(func(text string) {
