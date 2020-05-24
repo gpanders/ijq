@@ -3,7 +3,7 @@ ijq
 
 Interactive `jq` tool. Like [jqplay][] for the commandline.
 
-[![asciicast](https://asciinema.org/a/a0pp8jmRNw74EIqTRS3pCvZUJ.svg)](https://asciinema.org/a/a0pp8jmRNw74EIqTRS3pCvZUJ)
+[![asciicast](https://asciinema.org/a/333292.svg)](https://asciinema.org/a/333292)
 
 [jqplay]: https://jqplay.org
 
@@ -32,6 +32,8 @@ To install to another location, set the `PREFIX` variable, e.g.
 Usage
 -----
 
+ijq uses [jq][] under the hood, so make sure you have that installed first.
+
 Read from a file
 
     ijq file.json
@@ -47,6 +49,8 @@ You can use this in a pipe, .e.g.
 
 Press `Tab` or `Shift-Tab` to cycle through the windows. The display windows
 can be scrolled using Vim-like bindings, i.e. `hjkl` or the arrow keys.
+
+[jq]: https://stedolan.github.io/jq/
 
 Similar Work
 ------------
