@@ -56,7 +56,7 @@ func (d *Document) Filter(filter string) (string, error) {
 		io.WriteString(stdin, d.contents)
 	}()
 
-	out, err := cmd.CombinedOutput()
+	out, err := cmd.Output()
 	if err != nil {
 		return "", err
 	}
