@@ -6,7 +6,7 @@ SRCS := main.go
 all: ijq
 
 ijq: $(SRCS)
-	go build
+	go build -ldflags="-s -w" -o $@
 
 .PHONY: install
 install: ijq
