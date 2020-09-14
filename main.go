@@ -2,11 +2,11 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -74,6 +74,12 @@ func (d *Document) FromFile(filename string) error {
 }
 
 func (d *Document) FromStdin() error {
+	stat, _ := os.Stdin.Stat()
+	if (stat.Mode() & os.ModeCharDevice) != 0 {
+		// stdin is not being piped
+		return errors.New("No data on stdin")
+	}
+
 	scanner := bufio.NewScanner(os.Stdin)
 	lines := []string{}
 	for scanner.Scan() {
@@ -142,17 +148,20 @@ func main() {
 	go func() {
 		if flag.Arg(0) != "" {
 			if err := doc.FromFile(flag.Arg(0)); err != nil {
-				log.Fatal(err)
+				fmt.Fprintf(os.Stderr, "%s\n", err)
+				os.Exit(1)
 			}
 		} else {
 			if err := doc.FromStdin(); err != nil {
-				log.Fatal(err)
+				fmt.Fprintf(os.Stderr, "%s\n", err)
+				os.Exit(1)
 			}
 		}
 
 		out, err := doc.Filter(*filter)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+			os.Exit(1)
 		}
 
 		fmt.Fprint(tview.ANSIWriter(originalView), out)
