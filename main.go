@@ -14,7 +14,37 @@ import (
 	"github.com/rivo/tview"
 )
 
-func jq(input string, filter string) (string, error) {
+type Document struct {
+	contents string
+}
+
+func (d *Document) FromFile(filename string) error {
+	bytes, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+
+	d.contents = string(bytes)
+	return nil
+}
+
+func (d *Document) FromStdin() error {
+	scanner := bufio.NewScanner(os.Stdin)
+	lines := []string{}
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	d.contents = strings.Join(lines, "\n")
+
+	return nil
+}
+
+func (d *Document) Filter(filter string) (string, error) {
 	cmd := exec.Command("jq", "-C", filter)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -23,7 +53,7 @@ func jq(input string, filter string) (string, error) {
 
 	go func() {
 		defer stdin.Close()
-		io.WriteString(stdin, input)
+		io.WriteString(stdin, d.contents)
 	}()
 
 	out, err := cmd.CombinedOutput()
@@ -36,31 +66,10 @@ func jq(input string, filter string) (string, error) {
 }
 
 func main() {
-	var original string
-	if len(os.Args) >= 2 {
-		bytes, err := ioutil.ReadFile(os.Args[1])
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		original = string(bytes)
-	} else {
-		scanner := bufio.NewScanner(os.Stdin)
-		lines := []string{}
-		for scanner.Scan() {
-			lines = append(lines, scanner.Text())
-		}
-
-		if err := scanner.Err(); err != nil {
-			log.Fatal(err)
-		}
-
-		original = strings.Join(lines, "\n")
-	}
-
 	app := tview.NewApplication()
-	originalView := tview.NewTextView().
-		SetDynamicColors(true)
+
+	originalView := tview.NewTextView().SetDynamicColors(true)
+	originalView.SetTitle("Original").SetBorder(true)
 
 	outputView := tview.NewTextView().
 		SetDynamicColors(true).
@@ -68,26 +77,46 @@ func main() {
 			app.Draw()
 		})
 
+	outputView.SetTitle("Output").SetBorder(true)
+
 	outputWriter := tview.ANSIWriter(outputView)
 
-	orig, err := jq(original, ".")
-	if err != nil {
-		log.Fatal(err);
-	}
+	var doc Document
+	go func() {
+		if len(os.Args) > 1 {
+			if err := doc.FromFile(os.Args[1]); err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			if err := doc.FromStdin(); err != nil {
+				log.Fatal(err)
+			}
+		}
 
-	fmt.Fprint(tview.ANSIWriter(originalView), orig)
-	fmt.Fprint(outputWriter, orig)
+		out, err := doc.Filter(".")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Fprint(tview.ANSIWriter(originalView), out)
+		fmt.Fprint(outputWriter, out)
+	}()
 
 	filterInput := tview.NewInputField().
-		SetLabel("Filter: ").
+		SetFieldBackgroundColor(0).
+		SetFieldTextColor(7).
 		SetChangedFunc(func(text string) {
-			out, err := jq(original, text)
-			if err != nil {
-				return
-			}
+			go func() {
+				outputView.Clear()
+				out, err := doc.Filter(text)
+				if err != nil {
+					fmt.Fprintf(outputWriter, "Invalid filter")
+					return
+				}
 
-			outputView.Clear()
-			fmt.Fprint(outputWriter, out)
+				fmt.Fprint(outputWriter, out)
+				outputView.ScrollToBeginning()
+			}()
 		}).
 		SetDoneFunc(func(key tcell.Key) {
 			switch key {
@@ -97,13 +126,46 @@ func main() {
 			}
 		})
 
+	filterInput.SetTitle("Filter").SetBorder(true)
+
 	grid := tview.NewGrid().
-		SetRows(0, 1).
-		SetColumns(0, 0).
-		SetBorders(true).
-		AddItem(outputView, 0, 0, 1, 1, 0, 0, false).
-		AddItem(originalView, 0, 1, 1, 1, 0, 0, false).
-		AddItem(filterInput, 1, 0, 1, 2, 50, 0, true)
+		SetRows(0, 3).
+		SetColumns(0).
+		AddItem(tview.NewFlex().
+			AddItem(outputView, 0, 1, false).
+			AddItem(originalView, 0, 1, false), 0, 0, 1, 1, 0, 0, false).
+		AddItem(tview.NewFlex().
+			AddItem(tview.NewBox(), 0, 1, false).
+			AddItem(filterInput, 0, 3, true).
+			AddItem(tview.NewBox(), 0, 1, false), 1, 0, 1, 1, 50, 0, true)
+
+	elements := []tview.Primitive{outputView, originalView, filterInput}
+	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		var off int
+		switch key := event.Key(); key {
+		case tcell.KeyTab:
+			off = 1
+		case tcell.KeyBacktab:
+			off = -1
+		default:
+			return event
+		}
+
+		for i, e := range elements {
+			if e.GetFocusable().HasFocus() {
+				if i+off < len(elements) && i+off >= 0 {
+					app.SetFocus(elements[i+off])
+				} else if i+off == len(elements) {
+					app.SetFocus(elements[0])
+				} else {
+					app.SetFocus(elements[len(elements)-1])
+				}
+				return nil
+			}
+		}
+
+		return event
+	})
 
 	if err := app.SetRoot(grid, true).SetFocus(grid).Run(); err != nil {
 		panic(err)
