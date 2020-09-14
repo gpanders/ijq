@@ -35,10 +35,10 @@ Install [go][]. Then to install `ijq` under `/usr/local/bin/` simply run
 
     make install
 
-from the root of the project. To install to another location, set the `PREFIX`
+from the root of the project. To install to another location, set the `prefix`
 variable, e.g.
 
-    make PREFIX=~/.local install
+    make prefix=~/.local install
 
 [go]: https://golang.org/dl/
 

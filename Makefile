@@ -1,8 +1,9 @@
-PREFIX := /usr/local
-BINDIR := $(PREFIX)/bin
-SRCS := main.go
+prefix = /usr/local
+bindir = $(prefix)/bin
 
-VERSION := 0.1.0
+SRCS = main.go
+
+VERSION = 0.1.0
 
 .PHONY: all
 all: ijq
@@ -12,8 +13,12 @@ ijq: $(SRCS)
 
 .PHONY: install
 install: ijq
-	mkdir -p $(BINDIR)
-	install -m 0755 $< $(BINDIR)
+	install -d $(bindir)
+	install -m 0755 $< $(bindir)
+
+.PHONY: uninstall
+uninstall:
+	rm $(bindir)/ijq
 
 .PHONY: clean
 clean:
