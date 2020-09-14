@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/gdamore/tcell"
 	"github.com/rivo/tview"
@@ -189,24 +190,14 @@ func main() {
 		fmt.Fprint(outputWriter, out)
 	}()
 
+	inputChan := make(chan string)
 	filterInput := tview.NewInputField()
 	filterInput.
 		SetText(filter).
 		SetFieldBackgroundColor(0).
 		SetFieldTextColor(7).
 		SetChangedFunc(func(text string) {
-			go func() {
-				out, err := doc.Filter(text)
-				if err != nil {
-					filterInput.SetFieldTextColor(1)
-					return
-				}
-
-				filterInput.SetFieldTextColor(7)
-				outputView.Clear()
-				fmt.Fprint(outputWriter, out)
-				outputView.ScrollToBeginning()
-			}()
+			inputChan <- text
 		}).
 		SetDoneFunc(func(key tcell.Key) {
 			switch key {
@@ -218,6 +209,30 @@ func main() {
 		})
 
 	filterInput.SetTitle("Filter").SetBorder(true)
+
+	// Debounce filter input to avoid problems with input being entered too quickly
+	go func() {
+		var text string
+		interval := time.Millisecond
+		timer := time.NewTimer(interval)
+		for {
+			select {
+			case text = <-inputChan:
+				timer.Reset(interval)
+			case <-timer.C:
+				out, err := doc.Filter(text)
+				if err != nil {
+					filterInput.SetFieldTextColor(1)
+					continue
+				}
+
+				filterInput.SetFieldTextColor(7)
+				outputView.Clear()
+				fmt.Fprint(outputWriter, out)
+				outputView.ScrollToBeginning()
+			}
+		}
+	}()
 
 	grid := tview.NewGrid().
 		SetRows(0, 3).
