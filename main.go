@@ -129,7 +129,7 @@ func main() {
 	flag.BoolVar(&options.monochrome, "M", false, "don't colorize JSON")
 	flag.BoolVar(&options.sortKeys, "S", false, "sort keys of objects on output")
 
-	filter := flag.String("f", ".", "initial filter")
+	filterFile := flag.String("f", "", "read initial filter from `filename`")
 	version := flag.Bool("V", false, "print version and exit")
 
 	flag.Parse()
@@ -154,6 +154,17 @@ func main() {
 
 	outputWriter := tview.ANSIWriter(outputView)
 
+	filter := "."
+	if *filterFile != "" {
+		contents, err := ioutil.ReadFile(*filterFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+			os.Exit(1)
+		}
+
+		filter = string(contents)
+	}
+
 	doc := Document{options: options}
 	go func() {
 		if flag.Arg(0) != "" {
@@ -168,7 +179,7 @@ func main() {
 			}
 		}
 
-		out, err := doc.Filter(*filter)
+		out, err := doc.Filter(filter)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", err)
 			os.Exit(1)
@@ -180,7 +191,7 @@ func main() {
 
 	filterInput := tview.NewInputField()
 	filterInput.
-		SetText(*filter).
+		SetText(filter).
 		SetFieldBackgroundColor(0).
 		SetFieldTextColor(7).
 		SetChangedFunc(func(text string) {

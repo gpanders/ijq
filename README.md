@@ -63,10 +63,10 @@ You can use this in a pipe, .e.g.
 This will also print the current filter to stderr. This allows you to save the
 filter for re-use with `jq` in the future:
 
-    ijq file.json 2>filter.txt
+    ijq file.json 2>filter.jq
 
     # Same output as above
-    jq -f filter.txt file.json
+    jq -f filter.jq file.json
 
 Press `Tab` or `Shift-Tab` to cycle through the windows. The display windows
 can be scrolled using Vim-like bindings, i.e. `hjkl` or the arrow keys.
