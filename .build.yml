@@ -1,4 +1,9 @@
 image: alpine/edge
+packages:
+    - git
+    - go
+    - make
+    - musl-dev
 sources:
     - https://git.sr.ht/~gpanders/ijq
 secrets:
@@ -13,3 +18,9 @@ tasks:
     - mirror: |
         cd ijq
         git push --force --mirror git@github.com:gpanders/ijq
+    - build: |
+        cd ijq
+        make
+        tar czf ijq-linux-x86_64.tar.gz ijq
+artifacts:
+    - ijq/ijq-linux-x86_64.tar.gz
