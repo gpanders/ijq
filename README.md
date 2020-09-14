@@ -31,7 +31,7 @@ Example:
 
 ### Build from source
 
-Install [go][]. Then to install `ijq` under `/usr/local/bin/` simply run
+Install [go][]. To install `ijq` under `/usr/local/bin/` simply run
 
     make install
 
@@ -56,10 +56,6 @@ Read from stdin:
     curl -s https://api.github.com/users/gpanders | ijq
 
 Press `Return` to close `ijq` and print the current filtered output to stdout.
-You can use this in a pipe, .e.g.
-
-    curl -s https://api.github.com/users/gpanders/repos | ijq > output.json
-
 This will also print the current filter to stderr. This allows you to save the
 filter for re-use with `jq` in the future:
 
