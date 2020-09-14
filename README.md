@@ -24,8 +24,8 @@ your system path.
 
 Example:
 
-    wget https://git.sr.ht/~gpanders/ijq/refs/v0.1.0/ijq-x86_64-linux-gnu.tar.gz
-    tar -C /usr/local/bin/ -xf ijq-x86_64-linux-gnu.tar.gz
+    wget https://git.sr.ht/~gpanders/ijq/refs/v0.1.0/ijq-linux-x86_64.tar.gz
+    tar -C /usr/local/bin/ -xf ijq-linux-x86_64.tar.gz
 
 [sourcehut]: https://git.sr.ht/~gpanders/ijq/refs
 
