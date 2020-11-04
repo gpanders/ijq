@@ -236,27 +236,29 @@ func main() {
 
 	filterInput.SetTitle("Filter").SetBorder(true)
 
-	// Debounce filter input to avoid problems with input being entered too quickly
+	// Debounce filter input
 	go func() {
 		var text string
+		var timer *time.Timer
 		interval := time.Millisecond
-		timer := time.NewTimer(interval)
 		for {
-			select {
-			case text = <-inputChan:
-				timer.Reset(interval)
-			case <-timer.C:
+			text = <-inputChan
+			if timer != nil {
+				timer.Stop()
+			}
+
+			timer = time.AfterFunc(interval, func() {
 				out, err := doc.Filter(text)
 				if err != nil {
 					filterInput.SetFieldTextColor(1)
-					continue
+					return
 				}
 
 				filterInput.SetFieldTextColor(7)
 				outputView.Clear()
 				fmt.Fprint(outputWriter, out)
 				outputView.ScrollToBeginning()
-			}
+			})
 		}
 	}()
 
