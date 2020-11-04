@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log"
 	"io"
 	"io/ioutil"
 	"os"
@@ -108,7 +109,9 @@ func (d *Document) Filter(filter string) (string, error) {
 
 	go func() {
 		defer stdin.Close()
-		io.WriteString(stdin, d.contents)
+		if _, err := io.WriteString(stdin, d.contents); err != nil {
+			log.Fatalln(err)
+		}
 	}()
 
 	out, err := cmd.Output()
@@ -121,6 +124,9 @@ func (d *Document) Filter(filter string) (string, error) {
 }
 
 func main() {
+	// Remove log prefix
+	log.SetFlags(0)
+
 	options := Options{}
 	flag.BoolVar(&options.compact, "c", false, "compact instead of pretty-printed output")
 	flag.BoolVar(&options.nullInput, "n", false, "use ```null` as the single input value")
@@ -159,8 +165,7 @@ func main() {
 	if *filterFile != "" {
 		contents, err := ioutil.ReadFile(*filterFile)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s\n", err)
-			os.Exit(1)
+			log.Fatalln(err)
 		}
 
 		filter = string(contents)
@@ -170,20 +175,17 @@ func main() {
 	go func() {
 		if flag.Arg(0) != "" {
 			if err := doc.FromFile(flag.Arg(0)); err != nil {
-				fmt.Fprintf(os.Stderr, "%s\n", err)
-				os.Exit(1)
+				log.Fatalln(err)
 			}
 		} else {
 			if err := doc.FromStdin(); err != nil {
-				fmt.Fprintf(os.Stderr, "%s\n", err)
-				os.Exit(1)
+				log.Fatalln(err)
 			}
 		}
 
 		out, err := doc.Filter(filter)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s\n", err)
-			os.Exit(1)
+			log.Fatalln(err)
 		}
 
 		fmt.Fprint(tview.ANSIWriter(originalView), out)
