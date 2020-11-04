@@ -8,19 +8,26 @@ sources:
     - https://git.sr.ht/~gpanders/ijq
 secrets:
     - 78f39fb6-1185-492f-9c21-f755e10b5e5d
+    - 4039c3d1-35f1-4378-b015-8a9c98b4a0cf
 environment:
     GIT_SSH_COMMAND: ssh -o StrictHostKeyChecking=no
 triggers:
     - action: email
       condition: failure
-      to: Greg Anders <admin@gpanders.com>
+      to: Gregory Anders <greg@gpanders.com>
 tasks:
     - mirror: |
         cd ijq
         git push --force --mirror git@github.com:gpanders/ijq
     - build: |
         cd ijq
-        make
-        tar czf ijq-linux-x86_64.tar.gz ijq
-artifacts:
-    - ijq/ijq-linux-x86_64.tar.gz
+        tag=$(git describe --exact-match 2>/dev/null || true)
+        if [ -z "$tag" ]; then
+            echo "Current commit is not a tag; not building anything"
+        else
+            make
+            version=$(echo "$tag" | tr -d 'v')
+            tar czf ijq-"$version"-linux-x86_64.tar.gz ijq
+            export SRHT_TOKEN=$(cat ~/.srht-token)
+            curl -H Authorization:"token $SRHT_TOKEN" -F file=@ijq-"$version"-linux-x86_64.tar.gz https://git.sr.ht/api/repos/ijq/artifacts/"$tag"
+        fi
