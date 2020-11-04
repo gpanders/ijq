@@ -62,6 +62,11 @@ func (o *Options) ToSlice() []string {
 	return opts
 }
 
+func stdinHasData() bool {
+	stat, _ := os.Stdin.Stat()
+	return stat.Mode() & os.ModeCharDevice == 0
+}
+
 type Document struct {
 	contents string
 	options  Options
@@ -78,8 +83,7 @@ func (d *Document) FromFile(filename string) error {
 }
 
 func (d *Document) FromStdin() error {
-	stat, _ := os.Stdin.Stat()
-	if (stat.Mode() & os.ModeCharDevice) != 0 {
+	if !stdinHasData() {
 		// stdin is not being piped
 		return errors.New("No data on stdin")
 	}
@@ -95,6 +99,20 @@ func (d *Document) FromStdin() error {
 	}
 
 	d.contents = strings.Join(lines, "\n")
+
+	return nil
+}
+
+func (d *Document) Read(args []string) error {
+	if len(args) > 0 {
+		if err := d.FromFile(args[0]); err != nil {
+			return err
+		}
+	} else {
+		if err := d.FromStdin(); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
@@ -162,6 +180,9 @@ func main() {
 	outputWriter := tview.ANSIWriter(outputView)
 
 	filter := "."
+	doc := Document{options: options}
+	args := flag.Args()
+
 	if *filterFile != "" {
 		contents, err := ioutil.ReadFile(*filterFile)
 		if err != nil {
@@ -169,18 +190,19 @@ func main() {
 		}
 
 		filter = string(contents)
+	} else if len(args) > 1 || (len(args) > 0 && stdinHasData()) {
+		filter = args[0]
+		args = args[1:]
 	}
 
-	doc := Document{options: options}
 	go func() {
-		if flag.Arg(0) != "" {
-			if err := doc.FromFile(flag.Arg(0)); err != nil {
-				log.Fatalln(err)
-			}
-		} else {
-			if err := doc.FromStdin(); err != nil {
-				log.Fatalln(err)
-			}
+		if err := doc.Read(args); err != nil {
+			log.Fatalln(err)
+		}
+
+		orig, err := doc.Filter(".")
+		if err != nil {
+			log.Fatalln(err)
 		}
 
 		out, err := doc.Filter(filter)
@@ -188,7 +210,7 @@ func main() {
 			log.Fatalln(err)
 		}
 
-		fmt.Fprint(tview.ANSIWriter(originalView), out)
+		fmt.Fprint(tview.ANSIWriter(originalView), orig)
 		fmt.Fprint(outputWriter, out)
 	}()
 
