@@ -78,7 +78,7 @@ func (d *Document) FromFile(filename string) error {
 		return err
 	}
 
-	d.contents = string(bytes)
+	d.contents += string(bytes)
 	return nil
 }
 
@@ -105,8 +105,10 @@ func (d *Document) FromStdin() error {
 
 func (d *Document) Read(args []string) error {
 	if len(args) > 0 {
-		if err := d.FromFile(args[0]); err != nil {
-			return err
+		for _, file := range args {
+			if err := d.FromFile(file); err != nil {
+				return err
+			}
 		}
 	} else {
 		if err := d.FromStdin(); err != nil {
