@@ -216,25 +216,6 @@ func main() {
 		args = args[1:]
 	}
 
-	go func() {
-		if err := doc.Read(args); err != nil {
-			log.Fatalln(err)
-		}
-
-		orig, err := doc.Filter(".")
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		out, err := doc.Filter(filter)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		fmt.Fprint(tview.ANSIWriter(originalView), orig)
-		fmt.Fprint(outputWriter, out)
-	}()
-
 	inputChan := make(chan string)
 	filterInput := tview.NewInputField()
 	filterInput.
@@ -254,6 +235,26 @@ func main() {
 		})
 
 	filterInput.SetTitle("Filter").SetBorder(true)
+
+	// Filter output with original filter
+	go func() {
+		if err := doc.Read(args); err != nil {
+			log.Fatalln(err)
+		}
+
+		orig, err := doc.Filter(".")
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		out, err := doc.Filter(filter)
+		if err != nil {
+			filterInput.SetFieldTextColor(1)
+		}
+
+		fmt.Fprint(tview.ANSIWriter(originalView), orig)
+		fmt.Fprint(outputWriter, out)
+	}()
 
 	// Debounce filter input
 	go func() {
