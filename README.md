@@ -1,7 +1,7 @@
 ijq
 ===
 
-Interactive `jq` tool. Like [jqplay][] for the commandline.
+Interactive `jq` tool. Like [jqplay] for the commandline.
 
 [![asciicast](https://asciinema.org/a/333292.svg)](https://asciinema.org/a/333292)
 
@@ -18,7 +18,7 @@ If you use macOS and Homebrew, you can install `ijq` with
 
 ### Download a release
 
-Select the version you want to download from [sourcehut][] and download one of
+Select the version you want to download from [sourcehut] and download one of
 the precompiled releases from that page. Then extract the archive somewhere on
 your system path.
 
@@ -31,7 +31,7 @@ Example:
 
 ### Build from source
 
-Install [go][]. To install `ijq` under `/usr/local/bin/` simply run
+Install [go]. To install `ijq` under `/usr/local/bin/` simply run
 
     make install
 
@@ -40,12 +40,15 @@ variable, e.g.
 
     make prefix=~/.local install
 
+To generate the man page you will also need to have [scdoc] installed.
+
 [go]: https://golang.org/dl/
+[scdoc]: https://sr.ht/~sircmpwn/scdoc
 
 Usage
 -----
 
-ijq uses [jq][] under the hood, so make sure you have that installed first.
+ijq uses [jq] under the hood, so make sure you have that installed first.
 
 Read from a file:
 
@@ -72,7 +75,7 @@ can be scrolled using Vim-like bindings, i.e. `hjkl` or the arrow keys.
 Similar Work
 ------------
 
-- [jqplay][]
-- [vim-jqplay][]
+- [jqplay]
+- [vim-jqplay]
 
 [vim-jqplay]: https://github.com/bfrg/vim-jqplay
