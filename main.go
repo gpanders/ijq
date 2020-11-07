@@ -187,8 +187,8 @@ func main() {
 
 	app := tview.NewApplication()
 
-	originalView := tview.NewTextView().SetDynamicColors(true)
-	originalView.SetTitle("Original").SetBorder(true)
+	inputView := tview.NewTextView().SetDynamicColors(true)
+	inputView.SetTitle("Input").SetBorder(true)
 
 	outputView := tview.NewTextView().
 		SetDynamicColors(true).
@@ -252,7 +252,7 @@ func main() {
 			filterInput.SetFieldTextColor(1)
 		}
 
-		fmt.Fprint(tview.ANSIWriter(originalView), orig)
+		fmt.Fprint(tview.ANSIWriter(inputView), orig)
 		fmt.Fprint(outputWriter, out)
 	}()
 
@@ -286,14 +286,14 @@ func main() {
 		SetRows(0, 3).
 		SetColumns(0).
 		AddItem(tview.NewFlex().
-			AddItem(outputView, 0, 1, false).
-			AddItem(originalView, 0, 1, false), 0, 0, 1, 1, 0, 0, false).
+			AddItem(inputView, 0, 1, false).
+			AddItem(outputView, 0, 1, false), 0, 0, 1, 1, 0, 0, false).
 		AddItem(tview.NewFlex().
 			AddItem(tview.NewBox(), 0, 1, false).
 			AddItem(filterInput, 0, 3, true).
 			AddItem(tview.NewBox(), 0, 1, false), 1, 0, 1, 1, 0, 0, true)
 
-	elements := []tview.Primitive{outputView, originalView, filterInput}
+	elements := []tview.Primitive{inputView, outputView, filterInput}
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		var off int
 		switch key := event.Key(); key {
