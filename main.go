@@ -20,9 +20,9 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -119,6 +119,10 @@ func (d *Document) FromStdin() error {
 }
 
 func (d *Document) Read(args []string) error {
+	if d.options.nullInput {
+		return nil
+	}
+
 	if len(args) > 0 {
 		for _, file := range args {
 			if err := d.FromFile(file); err != nil {
@@ -207,7 +211,7 @@ func main() {
 		}
 
 		filter = string(contents)
-	} else if len(args) > 1 || (len(args) > 0 && stdinHasData()) {
+	} else if len(args) > 1 || (len(args) > 0 && (stdinHasData() || doc.options.nullInput)) {
 		filter = args[0]
 		args = args[1:]
 	}
