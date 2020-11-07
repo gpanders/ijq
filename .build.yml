@@ -4,6 +4,7 @@ packages:
     - go
     - make
     - musl-dev
+    - scdoc
 sources:
     - https://git.sr.ht/~gpanders/ijq
 secrets:
@@ -27,7 +28,9 @@ tasks:
         else
             make
             version=$(echo "$tag" | tr -d 'v')
-            tar czf ijq-"$version"-linux-x86_64.tar.gz ijq
+            mkdir ijq-"$version"
+            cp ijq ijq.1 COPYING ijq-"$version"/
+            tar czf ijq-"$version"-linux-x86_64.tar.gz ijq-"$version"
             export SRHT_TOKEN=$(cat ~/.srht-token)
             curl -H Authorization:"token $SRHT_TOKEN" -F file=@ijq-"$version"-linux-x86_64.tar.gz https://git.sr.ht/api/repos/ijq/artifacts/"$tag"
         fi
