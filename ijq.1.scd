@@ -13,15 +13,15 @@ ijq - interactive jq
 *ijq* is a near drop-in replacement for *jq* that allows you to interactively
 see the results of your filter as you construct it.
 
-*ijq* contains two panes and an input field: the left pane is the output result
-of the provided filter and the right pane contains the original, unmodified
-input data. When you are finished, press Return or Ctrl-C to exit. The filtered
-output will be written to standard output and your filter will be written to
-standard error.
+*ijq* contains two panes and an input field: the left pane is the original,
+unmodified input data and the right pane contains the filtered output. When you
+are finished, press Return or Ctrl-C to exit. The filtered output will be
+written to standard output and the filter itself will be written to standard
+error.
 
 If _files_ is omitted then *ijq* reads data from standard input.
 
-All of the options mirror the options from *jq*. The options are:
+All of the options mirror their counterparts in *jq*. The options are:
 
 *-c*
 	Use compact instead of pretty-printed output.
@@ -64,7 +64,7 @@ jq(1)
 
 # BUGS AND CONTRIBUTING
 
-Send pathces and bug reports to ~gpanders/public-inbox@lists.sr.ht.
+Send patches and bug reports to ~gpanders/public-inbox@lists.sr.ht.
 
 # AUTHOR
 
