@@ -221,6 +221,9 @@ func main() {
 	} else if len(args) > 1 || (len(args) > 0 && (stdinHasData() || doc.options.nullInput)) {
 		filter = args[0]
 		args = args[1:]
+	} else if len(args) == 0 {
+		flag.Usage()
+		os.Exit(1)
 	}
 
 	inputChan := make(chan string)
