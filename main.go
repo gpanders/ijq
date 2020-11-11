@@ -166,6 +166,13 @@ func main() {
 	// Remove log prefix
 	log.SetFlags(0)
 
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "ijq - interactive jq\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: ijq [-cnsrRMSV] [-f file] [filter] [files ...]\n\n")
+		fmt.Fprintf(os.Stderr, "Options:\n");
+		flag.PrintDefaults()
+	}
+
 	options := Options{}
 	flag.BoolVar(&options.compact, "c", false, "compact instead of pretty-printed output")
 	flag.BoolVar(&options.nullInput, "n", false, "use ```null` as the single input value")
