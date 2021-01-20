@@ -221,7 +221,7 @@ func main() {
 	} else if len(args) > 1 || (len(args) > 0 && (stdinHasData() || doc.options.nullInput)) {
 		filter = args[0]
 		args = args[1:]
-	} else if len(args) == 0 {
+	} else if len(args) == 0 && !stdinHasData() {
 		flag.Usage()
 		os.Exit(1)
 	}
