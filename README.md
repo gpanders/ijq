@@ -74,7 +74,11 @@ filter for re-use with `jq` in the future:
 Press `Tab` or `Shift-Tab` to cycle through the windows. The display windows
 can be scrolled using Vim-like bindings, i.e. `hjkl` or the arrow keys.
 
+You can configure the colors by setting the `JQ_COLORS` environment variable.
+See the [jq documentation][colors] for more details.
+
 [jq]: https://stedolan.github.io/jq/
+[colors]: https://stedolan.github.io/jq/manual/#Colors
 
 Similar Work
 ------------
