@@ -19,13 +19,17 @@ If you use macOS and Homebrew, you can install `ijq` with
 ### Download a release
 
 Select the version you want to download from [sourcehut] and download one of
-the precompiled releases from that page. Then extract the archive somewhere on
-your system path.
+the precompiled releases from that page. Then extract the archive and copy the
+binary and, optionally, the man page to the correct location.
 
 Example:
 
-    wget https://git.sr.ht/~gpanders/ijq/refs/v0.1.1/ijq-v0.1.1-linux-x86_64.tar.gz
-    tar -C /usr/local/bin/ -xf ijq-v0.1.1-linux-x86_64.tar.gz
+    wget https://git.sr.ht/~gpanders/ijq/refs/v0.2.3/ijq-v0.2.3-linux-x86_64.tar.gz
+    tar xf ijq-v0.2.3-linux-x86_64.tar.gz
+    cd ijq-v0.2.3
+    cp ijq /usr/local/bin
+    mkdir -p /usr/local/share/man/man1
+    cp ijq.1 /usr/local/share/man/man1
 
 [sourcehut]: https://git.sr.ht/~gpanders/ijq/refs
 
