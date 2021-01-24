@@ -28,7 +28,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gdamore/tcell"
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
@@ -316,7 +316,7 @@ func main() {
 		}
 
 		for i, e := range elements {
-			if e.GetFocusable().HasFocus() {
+			if e.HasFocus() {
 				if i+off < len(elements) && i+off >= 0 {
 					app.SetFocus(elements[i+off])
 				} else if i+off == len(elements) {
