@@ -79,7 +79,7 @@ func (o *Options) ToSlice() []string {
 
 func stdinHasData() bool {
 	stat, _ := os.Stdin.Stat()
-	return stat.Mode() & os.ModeCharDevice == 0
+	return stat.Mode()&os.ModeCharDevice == 0
 }
 
 type Document struct {
@@ -162,14 +162,11 @@ func (d *Document) Filter(filter string) (string, error) {
 
 }
 
-func main() {
-	// Remove log prefix
-	log.SetFlags(0)
-
+func parseArgs() (Options, string, []string) {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "ijq - interactive jq\n\n")
 		fmt.Fprintf(os.Stderr, "Usage: ijq [-cnsrRMSV] [-f file] [filter] [files ...]\n\n")
-		fmt.Fprintf(os.Stderr, "Options:\n");
+		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.PrintDefaults()
 	}
 
@@ -189,9 +186,31 @@ func main() {
 
 	if *version {
 		fmt.Println("ijq " + Version)
-		return
+		os.Exit(0)
 	}
 
+	filter := "."
+	args := flag.Args()
+
+	if *filterFile != "" {
+		contents, err := ioutil.ReadFile(*filterFile)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		filter = string(contents)
+	} else if len(args) > 1 || (len(args) > 0 && (stdinHasData() || options.nullInput)) {
+		filter = args[0]
+		args = args[1:]
+	} else if len(args) == 0 && !stdinHasData() {
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	return options, filter, args
+}
+
+func createApp(doc Document, filter string) *tview.Application {
 	app := tview.NewApplication()
 
 	inputView := tview.NewTextView().SetDynamicColors(true)
@@ -206,25 +225,6 @@ func main() {
 	outputView.SetTitle("Output").SetBorder(true)
 
 	outputWriter := tview.ANSIWriter(outputView)
-
-	filter := "."
-	doc := Document{options: options}
-	args := flag.Args()
-
-	if *filterFile != "" {
-		contents, err := ioutil.ReadFile(*filterFile)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		filter = string(contents)
-	} else if len(args) > 1 || (len(args) > 0 && (stdinHasData() || doc.options.nullInput)) {
-		filter = args[0]
-		args = args[1:]
-	} else if len(args) == 0 && !stdinHasData() {
-		flag.Usage()
-		os.Exit(1)
-	}
 
 	inputChan := make(chan string)
 	filterInput := tview.NewInputField()
@@ -248,10 +248,6 @@ func main() {
 
 	// Filter output with original filter
 	go func() {
-		if err := doc.Read(args); err != nil {
-			log.Fatalln(err)
-		}
-
 		orig, err := doc.Filter(".")
 		if err != nil {
 			log.Fatalln(err)
@@ -331,7 +327,24 @@ func main() {
 		return event
 	})
 
-	if err := app.SetRoot(grid, true).SetFocus(grid).Run(); err != nil {
-		panic(err)
+	app.SetRoot(grid, true).SetFocus(grid)
+
+	return app
+}
+
+func main() {
+	// Remove log prefix
+	log.SetFlags(0)
+
+	options, filter, args := parseArgs()
+
+	doc := Document{options: options}
+	if err := doc.Read(args); err != nil {
+		log.Fatalln(err)
+	}
+
+	app := createApp(doc, filter)
+	if err := app.Run(); err != nil {
+		log.Fatalln(err)
 	}
 }
