@@ -202,7 +202,7 @@ func parseArgs() (Options, string, []string) {
 	} else if len(args) > 1 || (len(args) > 0 && (stdinHasData() || options.nullInput)) {
 		filter = args[0]
 		args = args[1:]
-	} else if len(args) == 0 && !stdinHasData() {
+	} else if len(args) == 0 && !stdinHasData() && !options.nullInput {
 		flag.Usage()
 		os.Exit(1)
 	}
