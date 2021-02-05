@@ -230,8 +230,8 @@ func createApp(doc Document, filter string) *tview.Application {
 	filterInput := tview.NewInputField()
 	filterInput.
 		SetText(filter).
-		SetFieldBackgroundColor(0).
-		SetFieldTextColor(7).
+		SetFieldBackgroundColor(tcell.ColorBlack).
+		SetFieldTextColor(tcell.ColorSilver).
 		SetChangedFunc(func(text string) {
 			inputChan <- text
 		}).
@@ -255,7 +255,7 @@ func createApp(doc Document, filter string) *tview.Application {
 
 		out, err := doc.Filter(filter)
 		if err != nil {
-			filterInput.SetFieldTextColor(1)
+			filterInput.SetFieldTextColor(tcell.ColorMaroon)
 		}
 
 		fmt.Fprint(tview.ANSIWriter(inputView), orig)
@@ -276,11 +276,11 @@ func createApp(doc Document, filter string) *tview.Application {
 			timer = time.AfterFunc(interval, func() {
 				out, err := doc.Filter(text)
 				if err != nil {
-					filterInput.SetFieldTextColor(1)
+					filterInput.SetFieldTextColor(tcell.ColorMaroon)
 					return
 				}
 
-				filterInput.SetFieldTextColor(7)
+				filterInput.SetFieldTextColor(tcell.ColorSilver)
 				outputView.Clear()
 				fmt.Fprint(outputWriter, out)
 				outputView.ScrollToBeginning()
