@@ -24,9 +24,9 @@ binary and, optionally, the man page to the correct location.
 
 Example:
 
-    wget https://git.sr.ht/~gpanders/ijq/refs/v0.2.3/ijq-v0.2.3-linux-x86_64.tar.gz
-    tar xf ijq-v0.2.3-linux-x86_64.tar.gz
-    cd ijq-v0.2.3
+    wget https://git.sr.ht/~gpanders/ijq/refs/vX.Y.Z/ijq-vX.Y.Z-linux-x86_64.tar.gz
+    tar xf ijq-vX.Y.Z-linux-x86_64.tar.gz
+    cd ijq-vX.Y.Z
     cp ijq /usr/local/bin
     mkdir -p /usr/local/share/man/man1
     cp ijq.1 /usr/local/share/man/man1
