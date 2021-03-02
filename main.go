@@ -16,7 +16,7 @@
 package main
 
 import (
-	"bufio"
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
@@ -25,7 +25,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -103,17 +102,12 @@ func (d *Document) FromStdin() error {
 		return errors.New("No data on stdin")
 	}
 
-	scanner := bufio.NewScanner(os.Stdin)
-	lines := []string{}
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-
-	if err := scanner.Err(); err != nil {
+	var buf bytes.Buffer
+	if _, err := buf.ReadFrom(os.Stdin); err != nil {
 		return err
 	}
 
-	d.contents = strings.Join(lines, "\n")
+	d.contents = buf.String()
 
 	return nil
 }
