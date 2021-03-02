@@ -142,12 +142,10 @@ func (d *Document) Filter(filter string) (string, error) {
 
 	go func() {
 		defer stdin.Close()
-		if _, err := io.WriteString(stdin, d.contents); err != nil {
-			log.Fatalln(err)
-		}
+		_, _ = io.WriteString(stdin, d.contents);
 	}()
 
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", err
 	}
@@ -260,7 +258,7 @@ func createApp(doc Document, filter string) *tview.Application {
 	go func() {
 		var text string
 		var timer *time.Timer
-		interval := time.Millisecond
+		interval := 5 * time.Millisecond
 		for {
 			text = <-inputChan
 			if timer != nil {
