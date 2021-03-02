@@ -71,8 +71,11 @@ filter for re-use with `jq` in the future:
     # Same output as above
     jq -f filter.jq file.json
 
-Press `Tab` or `Shift-Tab` to cycle through the windows. The display windows
-can be scrolled using Vim-like bindings, i.e. `hjkl` or the arrow keys.
+Use `Shift` plus the arrow keys to move between the different windows. When
+either of the input or output views have focus, you can use the arrow keys to
+scroll up and down. Vi keys also work, i.e. you can use `j`/`k` to scroll up or
+down, `g` to move to the top of the view, `G` to jump to the bottom of the
+view, and `Ctrl-F`/`Ctrl-B` to scroll up or down a page at a time.
 
 You can configure the colors by setting the `JQ_COLORS` environment variable.
 See the [jq documentation][colors] for more details.

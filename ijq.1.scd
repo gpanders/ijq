@@ -54,6 +54,12 @@ All of the options mirror their counterparts in *jq*. The options are:
 	Read the filter from _file_. When this option is used, all positional
 	arguments (if any) are interpreted as input files.
 
+# NAVIGATION
+
+Use Shift + arrow keys to navigate between the different panes. The text panes
+can be scrolled using the arrow keys or vi-style bindings (e.g. j/k to scroll
+up/down by line, Ctrl-F/Ctrl-B to scroll up/down by half page).
+
 # DEMO
 
 See https://asciinema.org/a/333292 for a demo.

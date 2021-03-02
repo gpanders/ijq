@@ -17,7 +17,9 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
+	"strings"
 	"flag"
 	"fmt"
 	"io"
@@ -81,7 +83,8 @@ func stdinHasData() bool {
 }
 
 type Document struct {
-	contents string
+	input string
+	output string
 	options  Options
 }
 
@@ -91,7 +94,7 @@ func (d *Document) FromFile(filename string) error {
 		return err
 	}
 
-	d.contents = string(bytes)
+	d.input = string(bytes)
 	return nil
 }
 
@@ -106,7 +109,7 @@ func (d *Document) FromStdin() error {
 		return err
 	}
 
-	d.contents = buf.String()
+	d.input = buf.String()
 
 	return nil
 }
@@ -131,25 +134,27 @@ func (d *Document) Read(args []string) error {
 	return nil
 }
 
-func (d *Document) Filter(filter string) (string, error) {
+func (d *Document) Filter(filter string) error {
 	args := append(d.options.ToSlice(), filter)
 	cmd := exec.Command("jq", args...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	go func() {
 		defer stdin.Close()
-		_, _ = io.WriteString(stdin, d.contents);
+		_, _ = io.WriteString(stdin, d.input);
 	}()
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return string(out), nil
+	d.output = string(out)
+
+	return nil
 
 }
 
@@ -224,15 +229,14 @@ func createApp(doc Document, filter string) *tview.Application {
 		SetFieldTextColor(tcell.ColorSilver).
 		SetChangedFunc(func(text string) {
 				go app.QueueUpdate(func() {
-					out, err := doc.Filter(text)
-					if err != nil {
+					if err := doc.Filter(text); err != nil {
 						filterInput.SetFieldTextColor(tcell.ColorMaroon)
 						return
 					}
 
 					filterInput.SetFieldTextColor(tcell.ColorSilver)
 					outputView.Clear()
-					fmt.Fprint(outputWriter, out)
+					fmt.Fprint(outputWriter, doc.output)
 					outputView.ScrollToBeginning()
 				})
 		}).
@@ -243,24 +247,52 @@ func createApp(doc Document, filter string) *tview.Application {
 				fmt.Fprintln(os.Stderr, filterInput.GetText())
 				fmt.Fprint(os.Stdout, outputView.GetText(true))
 			}
+		}).
+		SetAutocompleteFunc(func(text string) []string {
+			if pos := strings.LastIndexByte(text, '.'); pos != -1 {
+				text := text[0:pos]
+
+				var filt string
+				if text != "" {
+					filt = text + "| keys"
+				} else {
+					filt = "keys"
+				}
+
+				d := Document{input: doc.input, options: Options{monochrome: true, compact: true}}
+				if err := d.Filter("first(" + filt + ")"); err != nil {
+					return nil
+				}
+
+				var keys []string
+				if err := json.Unmarshal([]byte(d.output), &keys); err != nil {
+					return nil
+				}
+
+				entries := keys[:0]
+				for _, k := range keys {
+					entries = append(entries, text + "." + k)
+				}
+
+				return entries
+			}
+
+			return nil
 		})
 
 	filterInput.SetTitle("Filter").SetBorder(true)
 
 	// Filter output with original filter
 	go func() {
-		orig, err := doc.Filter(".")
-		if err != nil {
+		if err := doc.Filter("."); err != nil {
 			log.Fatalln(err)
 		}
+		fmt.Fprint(tview.ANSIWriter(inputView), doc.output)
 
-		out, err := doc.Filter(filter)
-		if err != nil {
+		if err := doc.Filter(filter); err != nil {
 			filterInput.SetFieldTextColor(tcell.ColorMaroon)
 		}
-
-		fmt.Fprint(tview.ANSIWriter(inputView), orig)
-		fmt.Fprint(outputWriter, out)
+		fmt.Fprint(outputWriter, doc.output)
 	}()
 
 	grid := tview.NewGrid().
@@ -274,27 +306,27 @@ func createApp(doc Document, filter string) *tview.Application {
 			AddItem(filterInput, 0, 3, true).
 			AddItem(tview.NewBox(), 0, 1, false), 1, 0, 1, 1, 0, 0, true)
 
-	elements := []tview.Primitive{inputView, outputView, filterInput}
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		var off int
+		shift := event.Modifiers()&tcell.ModShift != 0
 		switch key := event.Key(); key {
-		case tcell.KeyTab:
-			off = 1
-		case tcell.KeyBacktab:
-			off = -1
-		default:
-			return event
-		}
-
-		for i, e := range elements {
-			if e.HasFocus() {
-				if i+off < len(elements) && i+off >= 0 {
-					app.SetFocus(elements[i+off])
-				} else if i+off == len(elements) {
-					app.SetFocus(elements[0])
-				} else {
-					app.SetFocus(elements[len(elements)-1])
-				}
+		case tcell.KeyUp:
+			if shift && filterInput.HasFocus() {
+				app.SetFocus(inputView)
+				return nil
+			}
+		case tcell.KeyDown:
+			if shift {
+				app.SetFocus(filterInput)
+				return nil
+			}
+		case tcell.KeyLeft:
+			if outputView.HasFocus() {
+				app.SetFocus(inputView)
+				return nil
+			}
+		case tcell.KeyRight:
+			if inputView.HasFocus() {
+				app.SetFocus(outputView)
 				return nil
 			}
 		}
