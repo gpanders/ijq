@@ -25,7 +25,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -92,7 +91,7 @@ func (d *Document) FromFile(filename string) error {
 		return err
 	}
 
-	d.contents += string(bytes)
+	d.contents = string(bytes)
 	return nil
 }
 
@@ -218,14 +217,24 @@ func createApp(doc Document, filter string) *tview.Application {
 
 	outputWriter := tview.ANSIWriter(outputView)
 
-	inputChan := make(chan string)
 	filterInput := tview.NewInputField()
 	filterInput.
 		SetText(filter).
 		SetFieldBackgroundColor(tcell.ColorBlack).
 		SetFieldTextColor(tcell.ColorSilver).
 		SetChangedFunc(func(text string) {
-			inputChan <- text
+				go app.QueueUpdate(func() {
+					out, err := doc.Filter(text)
+					if err != nil {
+						filterInput.SetFieldTextColor(tcell.ColorMaroon)
+						return
+					}
+
+					filterInput.SetFieldTextColor(tcell.ColorSilver)
+					outputView.Clear()
+					fmt.Fprint(outputWriter, out)
+					outputView.ScrollToBeginning()
+				})
 		}).
 		SetDoneFunc(func(key tcell.Key) {
 			switch key {
@@ -252,32 +261,6 @@ func createApp(doc Document, filter string) *tview.Application {
 
 		fmt.Fprint(tview.ANSIWriter(inputView), orig)
 		fmt.Fprint(outputWriter, out)
-	}()
-
-	// Debounce filter input
-	go func() {
-		var text string
-		var timer *time.Timer
-		interval := 5 * time.Millisecond
-		for {
-			text = <-inputChan
-			if timer != nil {
-				timer.Stop()
-			}
-
-			timer = time.AfterFunc(interval, func() {
-				out, err := doc.Filter(text)
-				if err != nil {
-					filterInput.SetFieldTextColor(tcell.ColorMaroon)
-					return
-				}
-
-				filterInput.SetFieldTextColor(tcell.ColorSilver)
-				outputView.Clear()
-				fmt.Fprint(outputWriter, out)
-				outputView.ScrollToBeginning()
-			})
-		}
 	}()
 
 	grid := tview.NewGrid().
