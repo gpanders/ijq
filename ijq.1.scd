@@ -64,7 +64,10 @@ jq(1)
 
 # BUGS AND CONTRIBUTING
 
-Send patches and bug reports to ~gpanders/public-inbox@lists.sr.ht.
+Report bugs to https://todo.sr.ht/~gpanders/ijq (or send an email to
+~gpanders/ijq@todo.sr.ht).
+
+Patches and questions can be sent to ~gpanders/public-inbox@lists.sr.ht.
 
 # AUTHOR
 
