@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"strings"
 	"flag"
 	"fmt"
 	"io"
@@ -27,6 +26,8 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
+	"sync"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -83,9 +84,9 @@ func stdinHasData() bool {
 }
 
 type Document struct {
-	input string
-	output string
-	options  Options
+	input   string
+	output  string
+	options Options
 }
 
 func (d *Document) FromFile(filename string) error {
@@ -144,7 +145,7 @@ func (d *Document) Filter(filter string) error {
 
 	go func() {
 		defer stdin.Close()
-		_, _ = io.WriteString(stdin, d.input);
+		_, _ = io.WriteString(stdin, d.input)
 	}()
 
 	out, err := cmd.CombinedOutput()
@@ -222,23 +223,25 @@ func createApp(doc Document, filter string) *tview.Application {
 
 	outputWriter := tview.ANSIWriter(outputView)
 
+	var mutex sync.Mutex
+	filterMap := make(map[string][]string)
 	filterInput := tview.NewInputField()
 	filterInput.
 		SetText(filter).
 		SetFieldBackgroundColor(tcell.ColorBlack).
 		SetFieldTextColor(tcell.ColorSilver).
 		SetChangedFunc(func(text string) {
-				go app.QueueUpdate(func() {
-					if err := doc.Filter(text); err != nil {
-						filterInput.SetFieldTextColor(tcell.ColorMaroon)
-						return
-					}
+			go app.QueueUpdate(func() {
+				if err := doc.Filter(text); err != nil {
+					filterInput.SetFieldTextColor(tcell.ColorMaroon)
+					return
+				}
 
-					filterInput.SetFieldTextColor(tcell.ColorSilver)
-					outputView.Clear()
-					fmt.Fprint(outputWriter, doc.output)
-					outputView.ScrollToBeginning()
-				})
+				filterInput.SetFieldTextColor(tcell.ColorSilver)
+				outputView.Clear()
+				fmt.Fprint(outputWriter, doc.output)
+				outputView.ScrollToBeginning()
+			})
 		}).
 		SetDoneFunc(func(key tcell.Key) {
 			switch key {
@@ -250,31 +253,46 @@ func createApp(doc Document, filter string) *tview.Application {
 		}).
 		SetAutocompleteFunc(func(text string) []string {
 			if pos := strings.LastIndexByte(text, '.'); pos != -1 {
-				text := text[0:pos]
+				prefix := text[0:pos]
 
-				var filt string
-				if text != "" {
-					filt = text + "| keys"
-				} else {
-					filt = "keys"
+				mutex.Lock()
+				defer mutex.Unlock()
+				entries, ok := filterMap[prefix]
+				if ok {
+					return entries
 				}
 
-				d := Document{input: doc.input, options: Options{monochrome: true, compact: true}}
-				if err := d.Filter("first(" + filt + ")"); err != nil {
-					return nil
-				}
+				go func() {
+					var filt string
+					if prefix != "" {
+						filt = prefix + "| keys"
+					} else {
+						filt = "keys"
+					}
 
-				var keys []string
-				if err := json.Unmarshal([]byte(d.output), &keys); err != nil {
-					return nil
-				}
+					d := Document{input: doc.input, options: Options{monochrome: true}}
+					if err := d.Filter("[" + filt + "] | unique | first"); err != nil {
+						return
+					}
 
-				entries := keys[:0]
-				for _, k := range keys {
-					entries = append(entries, text + "." + k)
-				}
+					var keys []string
+					if err := json.Unmarshal([]byte(d.output), &keys); err != nil {
+						return
+					}
 
-				return entries
+					entries := keys[:0]
+					for _, k := range keys {
+						entries = append(entries, prefix+"."+k)
+					}
+
+					mutex.Lock()
+					filterMap[prefix] = entries
+					mutex.Unlock()
+
+					filterInput.Autocomplete()
+
+					app.Draw()
+				}()
 			}
 
 			return nil
