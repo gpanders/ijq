@@ -3,7 +3,7 @@ ijq
 
 Interactive `jq` tool. Like [jqplay] for the commandline.
 
-[![asciicast](https://asciinema.org/a/333292.svg)](https://asciinema.org/a/333292)
+[![asciicast](https://asciinema.org/a/bIyt8DWu3L3QAP1BMKefoaUob.svg)](https://asciinema.org/a/bIyt8DWu3L3QAP1BMKefoaUob)
 
 [jqplay]: https://jqplay.org
 

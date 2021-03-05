@@ -62,7 +62,7 @@ up/down by line, Ctrl-F/Ctrl-B to scroll up/down by half page).
 
 # DEMO
 
-See https://asciinema.org/a/333292 for a demo.
+See https://asciinema.org/a/bIyt8DWu3L3QAP1BMKefoaUob for a demo.
 
 # SEE ALSO
 
