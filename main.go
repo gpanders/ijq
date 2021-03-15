@@ -85,7 +85,6 @@ func stdinHasData() bool {
 
 type Document struct {
 	input   string
-	output  string
 	options Options
 }
 
@@ -135,12 +134,12 @@ func (d *Document) Read(args []string) error {
 	return nil
 }
 
-func (d *Document) Filter(filter string) error {
+func (d *Document) Filter(filter string) (string, error) {
 	args := append(d.options.ToSlice(), filter)
 	cmd := exec.Command("jq", args...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	go func() {
@@ -150,12 +149,10 @@ func (d *Document) Filter(filter string) error {
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	d.output = string(out)
-
-	return nil
+	return string(out), nil
 
 }
 
@@ -232,14 +229,15 @@ func createApp(doc Document, filter string) *tview.Application {
 		SetFieldTextColor(tcell.ColorSilver).
 		SetChangedFunc(func(text string) {
 			go app.QueueUpdate(func() {
-				if err := doc.Filter(text); err != nil {
+				out, err := doc.Filter(text);
+				if err != nil {
 					filterInput.SetFieldTextColor(tcell.ColorMaroon)
 					return
 				}
 
 				filterInput.SetFieldTextColor(tcell.ColorSilver)
 				outputView.Clear()
-				fmt.Fprint(outputWriter, doc.output)
+				fmt.Fprint(outputWriter, out)
 				outputView.ScrollToBeginning()
 			})
 		}).
@@ -271,12 +269,13 @@ func createApp(doc Document, filter string) *tview.Application {
 					}
 
 					d := Document{input: doc.input, options: Options{monochrome: true}}
-					if err := d.Filter("[" + filt + "] | unique | first"); err != nil {
+					out, err := d.Filter("[" + filt + "] | unique | first")
+					if err != nil {
 						return
 					}
 
 					var keys []string
-					if err := json.Unmarshal([]byte(d.output), &keys); err != nil {
+					if err := json.Unmarshal([]byte(out), &keys); err != nil {
 						return
 					}
 
@@ -302,15 +301,18 @@ func createApp(doc Document, filter string) *tview.Application {
 
 	// Filter output with original filter
 	go func() {
-		if err := doc.Filter("."); err != nil {
+		orig, err := doc.Filter(".")
+		if err != nil {
 			log.Fatalln(err)
 		}
-		fmt.Fprint(tview.ANSIWriter(inputView), doc.output)
 
-		if err := doc.Filter(filter); err != nil {
+		out, err := doc.Filter(filter)
+		if err != nil {
 			filterInput.SetFieldTextColor(tcell.ColorMaroon)
 		}
-		fmt.Fprint(outputWriter, doc.output)
+
+		fmt.Fprint(tview.ANSIWriter(inputView), orig)
+		fmt.Fprint(outputWriter, out)
 	}()
 
 	grid := tview.NewGrid().
