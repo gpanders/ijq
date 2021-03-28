@@ -20,13 +20,13 @@ ijq: $(SRCS)
 
 .PHONY: install
 install: ijq ijq.1
-	install -d $(bindir) $(mandir)/man1
-	install -m 0755 ijq $(bindir)
-	install -m 0644 ijq.1 $(mandir)/man1
+	install -d $(DESTDIR)$(bindir) $(DESTDIR)$(mandir)/man1
+	install -m 0755 ijq $(DESTDIR)$(bindir)
+	install -m 0644 ijq.1 $(DESTDIR)$(mandir)/man1
 
 .PHONY: uninstall
 uninstall:
-	rm $(bindir)/ijq $(mandir)/man1/ijq.1
+	rm $(DESTDIR)$(bindir)/ijq $(DESTDIR)$(mandir)/man1/ijq.1
 
 .PHONY: clean
 clean:
