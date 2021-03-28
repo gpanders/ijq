@@ -10,11 +10,17 @@ Interactive `jq` tool. Like [jqplay] for the commandline.
 Installation
 ------------
 
-### Homebrew
+### Install from package manager
 
-If you use macOS and Homebrew, you can install `ijq` with
+The following package managers currently support `ijq`:
+
+#### Homebrew
 
     brew install gpanders/tap/ijq
+
+#### MacPorts
+
+    sudo port install ijq
 
 ### Download a release
 
