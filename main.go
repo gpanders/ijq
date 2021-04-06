@@ -30,6 +30,7 @@ import (
 	"sync"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/mitchellh/go-homedir"
 	"github.com/rivo/tview"
 )
 
@@ -44,6 +45,9 @@ type Options struct {
 	monochrome bool
 	sortKeys   bool
 }
+
+var historyFile string = "~/.ijq_history"
+var history []string
 
 func (o *Options) ToSlice() []string {
 	opts := []string{}
@@ -156,6 +160,47 @@ func (d *Document) Filter(filter string) (string, error) {
 
 }
 
+func appendToFile(filepath, line string) error {
+	if filepath == "" {
+		return errors.New("no filepath specified")
+	}
+	file, err := os.OpenFile(filepath, (os.O_APPEND | os.O_CREATE | os.O_WRONLY), 0644)
+	if err != nil {
+		return err
+	}
+	if _, err := file.WriteString(line + "\n"); err != nil {
+		return err
+	}
+	if err = file.Close(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func readFromFile(filepath string) ([]string, error) {
+	contents, err := ioutil.ReadFile(filepath)
+	if err != nil {
+		return nil, err
+	}
+	return strings.Split(string(contents), "\n"), nil
+}
+
+func appendToHistory(line string) error {
+	if (line != "") && (!isCapturedInHistory(line)) {
+		return appendToFile(historyFile, line)
+	}
+	return nil
+}
+
+func isCapturedInHistory(line string) bool {
+	for _, current := range history {
+		if line == current {
+			return true
+		}
+	}
+	return false
+}
+
 func parseArgs() (Options, string, []string) {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "ijq - interactive jq\n\n")
@@ -172,6 +217,7 @@ func parseArgs() (Options, string, []string) {
 	flag.BoolVar(&options.rawInput, "R", false, "read raw strings, not JSON texts")
 	flag.BoolVar(&options.monochrome, "M", false, "don't colorize JSON")
 	flag.BoolVar(&options.sortKeys, "S", false, "sort keys of objects on output")
+	flag.StringVar(&historyFile, "H", historyFile, "set path to history file. Set to '' to disable history.")
 
 	filterFile := flag.String("f", "", "read initial filter from `filename`")
 	version := flag.Bool("V", false, "print version and exit")
@@ -201,6 +247,12 @@ func parseArgs() (Options, string, []string) {
 		os.Exit(1)
 	}
 
+	if historyFile != "" {
+		historyFile, _ = homedir.Expand(historyFile)
+	}
+
+	history, _ = readFromFile(historyFile)
+
 	return options, filter, args
 }
 
@@ -229,7 +281,7 @@ func createApp(doc Document, filter string) *tview.Application {
 		SetFieldTextColor(tcell.ColorSilver).
 		SetChangedFunc(func(text string) {
 			go app.QueueUpdate(func() {
-				out, err := doc.Filter(text);
+				out, err := doc.Filter(text)
 				if err != nil {
 					filterInput.SetFieldTextColor(tcell.ColorMaroon)
 					return
@@ -245,11 +297,18 @@ func createApp(doc Document, filter string) *tview.Application {
 			switch key {
 			case tcell.KeyEnter:
 				app.Stop()
-				fmt.Fprintln(os.Stderr, filterInput.GetText())
-				fmt.Fprint(os.Stdout, outputView.GetText(true))
+				expression := filterInput.GetText()
+				output := outputView.GetText(true)
+				fmt.Fprintln(os.Stderr, expression)
+				fmt.Fprint(os.Stdout, output)
+				appendToHistory(expression)
 			}
 		}).
 		SetAutocompleteFunc(func(text string) []string {
+			if filterInput.GetText() == "" && len(history) > 0 {
+				return history
+			}
+
 			if pos := strings.LastIndexByte(text, '.'); pos != -1 {
 				prefix := text[0:pos]
 

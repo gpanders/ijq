@@ -77,6 +77,10 @@ filter for re-use with `jq` in the future:
     # Same output as above
     jq -f filter.jq file.json
 
+Pressing `Return` also saves the filter to a history file (`~/.ijq_history` by
+default).  You can browse the history by deleting everything in the filter
+field.
+
 Use `Shift` plus the arrow keys to move between the different windows. When
 either of the input or output views have focus, you can use the arrow keys to
 scroll up and down. Vi keys also work, i.e. you can use `j`/`k` to scroll up or
