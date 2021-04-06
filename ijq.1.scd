@@ -54,11 +54,17 @@ All of the options mirror their counterparts in *jq*. The options are:
 	Read the filter from _file_. When this option is used, all positional
 	arguments (if any) are interpreted as input files.
 
+*-H* _file_
+	Specify the path to store history. If set to '' (-H ''), then history
+	will not be captured.
+
 # NAVIGATION
 
 Use Shift + arrow keys to navigate between the different panes. The text panes
 can be scrolled using the arrow keys or vi-style bindings (e.g. j/k to scroll
 up/down by line, Ctrl-F/Ctrl-B to scroll up/down by half page).
+
+Delete all text in the filter field to browse any available history.
 
 # DEMO
 
