@@ -87,6 +87,8 @@ scroll up and down. Vi keys also work, i.e. you can use `j`/`k` to scroll up or
 down, `g` to move to the top of the view, `G` to jump to the bottom of the
 view, and `Ctrl-F`/`Ctrl-B` to scroll up or down a page at a time.
 
+The `Escape` key exits `ijq` immediately, discarding all filters and state.
+
 You can configure the colors by setting the `JQ_COLORS` environment variable.
 See the [jq documentation][colors] for more details.
 

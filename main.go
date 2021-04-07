@@ -398,6 +398,8 @@ func createApp(doc Document, filter string) *tview.Application {
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		shift := event.Modifiers()&tcell.ModShift != 0
 		switch key := event.Key(); key {
+		case tcell.KeyEscape:
+			app.Stop()
 		case tcell.KeyUp:
 			if shift && filterInput.HasFocus() {
 				app.SetFocus(inputView)
