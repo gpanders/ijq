@@ -22,10 +22,10 @@ The following package managers currently support `ijq`:
 
     sudo port install ijq
 
-### Download a release
+### Download a pre-compiled release
 
 Select the version you want to download from [sourcehut] and download one of
-the precompiled releases from that page. Then extract the archive and copy the
+the pre-compiled releases from that page. Then extract the archive and copy the
 binary and, optionally, the man page to the correct location.
 
 Example:
@@ -87,7 +87,8 @@ scroll up and down. Vi keys also work, i.e. you can use `j`/`k` to scroll up or
 down, `g` to move to the top of the view, `G` to jump to the bottom of the
 view, and `Ctrl-F`/`Ctrl-B` to scroll up or down a page at a time.
 
-The `Escape` key exits `ijq` immediately, discarding all filters and state.
+Use `Ctrl-C` or `Escape` to exit `ijq` immediately, discarding all filters and
+state.
 
 You can configure the colors by setting the `JQ_COLORS` environment variable.
 See the [jq documentation][colors] for more details.
