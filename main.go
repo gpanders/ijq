@@ -115,7 +115,7 @@ func (d *Document) FromFile(filename string) error {
 func (d *Document) FromStdin() error {
 	if !stdinHasData() {
 		// stdin is not being piped
-		return errors.New("No data on stdin")
+		return errors.New("no data on stdin")
 	}
 
 	var buf bytes.Buffer
@@ -163,6 +163,12 @@ func (d *Document) Filter(filter string) (string, error) {
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		if exiterr, ok := err.(*exec.ExitError); ok {
+			// jq prints its error message to standard out, but we
+			// will deliver it in the Stderr field as this will
+			// most likely be an exec.ExitError.
+			exiterr.Stderr = out
+		}
 		return "", err
 	}
 
@@ -283,6 +289,10 @@ func createApp(doc Document, filter string) *tview.Application {
 
 	outputView.SetTitle("Output").SetBorder(true)
 
+	errorView := tview.NewTextView().SetDynamicColors(true)
+	errorView.SetTitle("Error").SetBorder(true)
+
+	errorWriter := tview.ANSIWriter(errorView)
 	outputWriter := tview.ANSIWriter(outputView)
 
 	// If reading the history file fails then just ignore the error and
@@ -297,10 +307,16 @@ func createApp(doc Document, filter string) *tview.Application {
 		SetFieldBackgroundColor(tcell.ColorBlack).
 		SetFieldTextColor(tcell.ColorSilver).
 		SetChangedFunc(func(text string) {
-			go app.QueueUpdate(func() {
+			go app.QueueUpdateDraw(func() {
+				errorView.Clear()
 				out, err := doc.Filter(text)
 				if err != nil {
 					filterInput.SetFieldTextColor(tcell.ColorMaroon)
+					exitErr, ok := err.(*exec.ExitError)
+					if ok {
+						fmt.Fprint(errorWriter, string(exitErr.Stderr))
+					}
+
 					return
 				}
 
@@ -395,21 +411,23 @@ func createApp(doc Document, filter string) *tview.Application {
 	}()
 
 	grid := tview.NewGrid().
-		SetRows(0, 3).
+		SetRows(0, 3, 4).
 		SetColumns(0).
 		AddItem(tview.NewFlex().
 			AddItem(inputView, 0, 1, false).
 			AddItem(outputView, 0, 1, false), 0, 0, 1, 1, 0, 0, false).
 		AddItem(tview.NewFlex().
 			AddItem(tview.NewBox(), 0, 1, false).
-			AddItem(filterInput, 0, 3, true).
-			AddItem(tview.NewBox(), 0, 1, false), 1, 0, 1, 1, 0, 0, true)
+			AddItem(filterInput, 0, 4, true).
+			AddItem(tview.NewBox(), 0, 1, false), 1, 0, 1, 1, 0, 0, true).
+		AddItem(tview.NewFlex().
+			AddItem(tview.NewBox(), 0, 1, false).
+			AddItem(errorView, 0, 4, false).
+			AddItem(tview.NewBox(), 0, 1, false), 2, 0, 1, 1, 0, 0, false)
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		shift := event.Modifiers()&tcell.ModShift != 0
 		switch key := event.Key(); key {
-		case tcell.KeyEscape:
-			app.Stop()
 		case tcell.KeyCtrlN:
 			return tcell.NewEventKey(tcell.KeyDown, ' ', tcell.ModNone)
 		case tcell.KeyCtrlP:

@@ -66,7 +66,7 @@ up/down by line, Ctrl-F/Ctrl-B to scroll up/down by half page).
 
 Delete all text in the filter field to browse any available history.
 
-The Escape key exits *ijq* immediately, discarding all state.
+Use Ctrl-C to exit *ijq* immediately, discarding all state.
 
 # DEMO
 
