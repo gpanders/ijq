@@ -17,6 +17,7 @@ package main
 
 import (
 	"bytes"
+	"bufio"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -182,12 +183,24 @@ func appendToFile(filepath, line string) error {
 }
 
 func readFromFile(filepath string) ([]string, error) {
-	contents, err := ioutil.ReadFile(filepath)
+	f, err := os.Open(filepath)
 	if err != nil {
 		return nil, err
 	}
 
-	return strings.Split(string(contents), "\n"), nil
+	defer f.Close()
+
+	var lines []string
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return lines, nil
 }
 
 func appendToHistory(line string) error {
