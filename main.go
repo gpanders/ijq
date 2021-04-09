@@ -16,8 +16,8 @@
 package main
 
 import (
-	"bytes"
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -27,28 +27,37 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/mitchellh/go-homedir"
+	"github.com/kyoh86/xdg"
 	"github.com/rivo/tview"
 )
 
 var Version string
 
 type Options struct {
-	compact    bool
-	nullInput  bool
-	slurp      bool
-	rawOutput  bool
-	rawInput   bool
-	monochrome bool
-	sortKeys   bool
+	compact     bool
+	nullInput   bool
+	slurp       bool
+	rawOutput   bool
+	rawInput    bool
+	monochrome  bool
+	sortKeys    bool
+	historyFile string
 }
 
-var historyFile string = "~/.ijq_history"
-var history []string
+func contains(arr []string, elem string) bool {
+	for _, v := range arr {
+		if elem == v {
+			return true
+		}
+	}
+
+	return false
+}
 
 func (o *Options) ToSlice() []string {
 	opts := []string{}
@@ -203,24 +212,6 @@ func readFromFile(filepath string) ([]string, error) {
 	return lines, nil
 }
 
-func appendToHistory(line string) error {
-	if line != "" && !isCapturedInHistory(line) {
-		return appendToFile(historyFile, line)
-	}
-
-	return nil
-}
-
-func isCapturedInHistory(line string) bool {
-	for _, current := range history {
-		if line == current {
-			return true
-		}
-	}
-
-	return false
-}
-
 func parseArgs() (Options, string, []string) {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "ijq - interactive jq\n\n")
@@ -237,7 +228,13 @@ func parseArgs() (Options, string, []string) {
 	flag.BoolVar(&options.rawInput, "R", false, "read raw strings, not JSON texts")
 	flag.BoolVar(&options.monochrome, "M", false, "don't colorize JSON")
 	flag.BoolVar(&options.sortKeys, "S", false, "sort keys of objects on output")
-	flag.StringVar(&historyFile, "H", historyFile, "set path to history file. Set to '' to disable history.")
+
+	flag.StringVar(
+		&options.historyFile,
+		"H",
+		filepath.Join(xdg.DataHome(), "ijq", "history"),
+		"set path to history file. Set to '' to disable history.",
+	)
 
 	filterFile := flag.String("f", "", "read initial filter from `filename`")
 	version := flag.Bool("V", false, "print version and exit")
@@ -267,11 +264,7 @@ func parseArgs() (Options, string, []string) {
 		os.Exit(1)
 	}
 
-	if historyFile != "" {
-		historyFile, _ = homedir.Expand(historyFile)
-	}
-
-	history, _ = readFromFile(historyFile)
+	_ = os.MkdirAll(filepath.Dir(options.historyFile), os.ModePerm)
 
 	return options, filter, args
 }
@@ -291,6 +284,10 @@ func createApp(doc Document, filter string) *tview.Application {
 	outputView.SetTitle("Output").SetBorder(true)
 
 	outputWriter := tview.ANSIWriter(outputView)
+
+	// If reading the history file fails then just ignore the error and
+	// move on
+	history, _ := readFromFile(doc.options.historyFile)
 
 	var mutex sync.Mutex
 	filterMap := make(map[string][]string)
@@ -322,9 +319,9 @@ func createApp(doc Document, filter string) *tview.Application {
 				fmt.Fprintln(os.Stderr, expression)
 				fmt.Fprint(os.Stdout, output)
 
-				// Silently ignore error for now
-				// TODO: Add some kind of verbose or debug flag to print more logging
-				_ = appendToHistory(expression)
+				if expression != "" && !contains(history, expression) {
+					_ = appendToFile(doc.options.historyFile, expression)
+				}
 			}
 		}).
 		SetAutocompleteFunc(func(text string) []string {
