@@ -400,6 +400,10 @@ func createApp(doc Document, filter string) *tview.Application {
 		switch key := event.Key(); key {
 		case tcell.KeyEscape:
 			app.Stop()
+		case tcell.KeyCtrlN:
+			return tcell.NewEventKey(tcell.KeyDown, ' ', tcell.ModNone)
+		case tcell.KeyCtrlP:
+			return tcell.NewEventKey(tcell.KeyUp, ' ', tcell.ModNone)
 		case tcell.KeyUp:
 			if shift && filterInput.HasFocus() {
 				app.SetFocus(inputView)
