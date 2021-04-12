@@ -1,4 +1,4 @@
-// Copyright (C) 2020 Gregory Anders
+// Copyright (C) 2021 Gregory Anders
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/kyoh86/xdg"
 	"github.com/rivo/tview"
+	"golang.org/x/term"
 )
 
 var Version string
@@ -47,20 +48,14 @@ type Options struct {
 	monochrome  bool
 	sortKeys    bool
 	historyFile string
+	forceColor  bool
 }
 
-func contains(arr []string, elem string) bool {
-	for _, v := range arr {
-		if elem == v {
-			return true
-		}
-	}
-
-	return false
-}
-
+// Convert the Options struct to a string slice of option flags that gets
+// passed to jq.
 func (o *Options) ToSlice() []string {
 	opts := []string{}
+
 	if o.compact {
 		opts = append(opts, "-c")
 	}
@@ -81,7 +76,11 @@ func (o *Options) ToSlice() []string {
 		opts = append(opts, "-R")
 	}
 
-	if !o.monochrome {
+	if o.monochrome {
+		opts = append(opts, "-M")
+	}
+
+	if o.forceColor {
 		opts = append(opts, "-C")
 	}
 
@@ -92,68 +91,37 @@ func (o *Options) ToSlice() []string {
 	return opts
 }
 
-func stdinHasData() bool {
-	stat, _ := os.Stdin.Stat()
-	return stat.Mode()&os.ModeCharDevice == 0
-}
-
 type Document struct {
 	input   string
+	filter  string
 	options Options
 }
 
-func (d *Document) FromFile(filename string) error {
-	bytes, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return err
-	}
-
-	d.input = string(bytes)
-	return nil
-}
-
-func (d *Document) FromStdin() error {
-	if !stdinHasData() {
-		// stdin is not being piped
-		return errors.New("no data on stdin")
-	}
-
+func (d *Document) ReadFrom(r io.Reader) (n int64, err error) {
 	var buf bytes.Buffer
-	if _, err := buf.ReadFrom(os.Stdin); err != nil {
-		return err
-	}
-
+	n, err = buf.ReadFrom(r)
 	d.input = buf.String()
-
-	return nil
+	return n, err
 }
 
-func (d *Document) Read(args []string) error {
-	if d.options.nullInput {
-		return nil
+// Filter the document with the given jq filter and options
+func (d *Document) WriteTo(w io.Writer) (n int64, err error) {
+	opts := d.options
+	if tv, ok := w.(*tview.TextView); ok {
+		// Writer is a TextView, so set options accordingly
+		opts.forceColor = true
+		opts.monochrome = false
+		opts.compact = false
+		opts.rawOutput = false
+		tv.Clear()
+		w = tview.ANSIWriter(w)
 	}
 
-	if len(args) > 0 {
-		for _, file := range args {
-			if err := d.FromFile(file); err != nil {
-				return err
-			}
-		}
-	} else {
-		if err := d.FromStdin(); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (d *Document) Filter(filter string) (string, error) {
-	args := append(d.options.ToSlice(), filter)
+	args := append(opts.ToSlice(), d.filter)
 	cmd := exec.Command("jq", args...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 
 	go func() {
@@ -169,41 +137,30 @@ func (d *Document) Filter(filter string) (string, error) {
 			// most likely be an exec.ExitError.
 			exiterr.Stderr = out
 		}
-		return "", err
+		return 0, err
 	}
 
-	return string(out), nil
+	m, err := w.Write(out)
+	n = int64(m)
+	return n, err
 
 }
 
-func appendToFile(filepath, line string) error {
-	if filepath == "" {
-		return errors.New("no filepath specified")
+func contains(arr []string, elem string) bool {
+	for _, v := range arr {
+		if elem == v {
+			return true
+		}
 	}
 
-	file, err := os.OpenFile(filepath, (os.O_APPEND | os.O_CREATE | os.O_WRONLY), 0644)
-	if err != nil {
-		return err
-	}
-
-	if _, err := file.WriteString(line + "\n"); err != nil {
-		return err
-	}
-
-	if err = file.Close(); err != nil {
-		return err
-	}
-
-	return nil
+	return false
 }
 
-func readFromFile(filepath string) ([]string, error) {
+func readFile(filepath string) ([]string, error) {
 	f, err := os.Open(filepath)
 	if err != nil {
 		return nil, err
 	}
-
-	defer f.Close()
 
 	var lines []string
 	scanner := bufio.NewScanner(f)
@@ -216,6 +173,25 @@ func readFromFile(filepath string) ([]string, error) {
 	}
 
 	return lines, nil
+}
+
+func appendToFile(filepath, line string) error {
+	if filepath == "" {
+		return errors.New("no filepath specified")
+	}
+
+	file, err := os.OpenFile(filepath, (os.O_APPEND | os.O_CREATE | os.O_WRONLY), 0644)
+	if err != nil {
+		return err
+	}
+
+	defer file.Close()
+
+	if _, err := file.WriteString(line + "\n"); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func parseArgs() (Options, string, []string) {
@@ -232,7 +208,8 @@ func parseArgs() (Options, string, []string) {
 	flag.BoolVar(&options.slurp, "s", false, "read (slurp) all inputs into an array; apply filter to it")
 	flag.BoolVar(&options.rawOutput, "r", false, "output raw strings, not JSON texts")
 	flag.BoolVar(&options.rawInput, "R", false, "read raw strings, not JSON texts")
-	flag.BoolVar(&options.monochrome, "M", false, "don't colorize JSON")
+	flag.BoolVar(&options.forceColor, "C", false, "force colorized JSON, even if writing to a pipe or file")
+	flag.BoolVar(&options.monochrome, "M", false, "monochrome (don't colorize JSON)")
 	flag.BoolVar(&options.sortKeys, "S", false, "sort keys of objects on output")
 
 	flag.StringVar(
@@ -255,6 +232,8 @@ func parseArgs() (Options, string, []string) {
 	filter := "."
 	args := flag.Args()
 
+	stdinIsTty := term.IsTerminal(int(os.Stdin.Fd()))
+
 	if *filterFile != "" {
 		contents, err := ioutil.ReadFile(*filterFile)
 		if err != nil {
@@ -262,67 +241,63 @@ func parseArgs() (Options, string, []string) {
 		}
 
 		filter = string(contents)
-	} else if len(args) > 1 || (len(args) > 0 && (stdinHasData() || options.nullInput)) {
+	} else if len(args) > 1 || (len(args) > 0 && (!stdinIsTty || options.nullInput)) {
 		filter = args[0]
 		args = args[1:]
-	} else if len(args) == 0 && !stdinHasData() && !options.nullInput {
+	} else if len(args) == 0 && stdinIsTty && !options.nullInput {
 		flag.Usage()
 		os.Exit(1)
 	}
 
-	_ = os.MkdirAll(filepath.Dir(options.historyFile), os.ModePerm)
+	if options.historyFile != "" {
+		_ = os.MkdirAll(filepath.Dir(options.historyFile), os.ModePerm)
+	}
 
 	return options, filter, args
 }
 
-func createApp(doc Document, filter string) *tview.Application {
+func createApp(doc Document) *tview.Application {
 	app := tview.NewApplication()
 
-	inputView := tview.NewTextView().SetDynamicColors(true)
-	inputView.SetTitle("Input").SetBorder(true)
+	inputView := tview.NewTextView()
+	inputView.SetDynamicColors(true).SetTitle("Input").SetBorder(true)
 
-	outputView := tview.NewTextView().
-		SetDynamicColors(true).
-		SetChangedFunc(func() {
-			app.Draw()
-		})
+	outputView := tview.NewTextView()
+	outputView.SetDynamicColors(true).SetTitle("Output").SetBorder(true)
 
-	outputView.SetTitle("Output").SetBorder(true)
+	errorView := tview.NewTextView()
+	errorView.SetDynamicColors(true).SetTitle("Error").SetBorder(true)
 
-	errorView := tview.NewTextView().SetDynamicColors(true)
-	errorView.SetTitle("Error").SetBorder(true)
-
-	errorWriter := tview.ANSIWriter(errorView)
-	outputWriter := tview.ANSIWriter(outputView)
-
-	// If reading the history file fails then just ignore the error and
-	// move on
-	history, _ := readFromFile(doc.options.historyFile)
+	var history []string
+	if doc.options.historyFile != "" {
+		// If reading the history file fails then just ignore the error and
+		// move on
+		history, _ = readFile(doc.options.historyFile)
+	}
 
 	var mutex sync.Mutex
 	filterMap := make(map[string][]string)
 	filterInput := tview.NewInputField()
 	filterInput.
-		SetText(filter).
+		SetText(doc.filter).
 		SetFieldBackgroundColor(tcell.ColorBlack).
 		SetFieldTextColor(tcell.ColorSilver).
 		SetChangedFunc(func(text string) {
 			go app.QueueUpdateDraw(func() {
 				errorView.Clear()
-				out, err := doc.Filter(text)
+				doc.filter = text
+				_, err := doc.WriteTo(outputView)
 				if err != nil {
 					filterInput.SetFieldTextColor(tcell.ColorMaroon)
 					exitErr, ok := err.(*exec.ExitError)
 					if ok {
-						fmt.Fprint(errorWriter, string(exitErr.Stderr))
+						fmt.Fprint(tview.ANSIWriter(errorView), string(exitErr.Stderr))
 					}
 
 					return
 				}
 
 				filterInput.SetFieldTextColor(tcell.ColorSilver)
-				outputView.Clear()
-				fmt.Fprint(outputWriter, out)
 				outputView.ScrollToBeginning()
 			})
 		}).
@@ -330,18 +305,30 @@ func createApp(doc Document, filter string) *tview.Application {
 			switch key {
 			case tcell.KeyEnter:
 				app.Stop()
-				expression := filterInput.GetText()
-				output := outputView.GetText(true)
-				fmt.Fprintln(os.Stderr, expression)
-				fmt.Fprint(os.Stdout, output)
 
-				if expression != "" && !contains(history, expression) {
-					_ = appendToFile(doc.options.historyFile, expression)
+				fmt.Fprintln(os.Stderr, doc.filter)
+
+				// Enable or disable colors depending on if
+				// stdout is a tty, respecting options set by
+				// the user
+				isTty := term.IsTerminal(int(os.Stdout.Fd()))
+				if !isTty && !doc.options.forceColor {
+					doc.options.monochrome = true
+				} else if isTty && !doc.options.monochrome {
+					doc.options.forceColor = true
+				}
+
+				if _, err := doc.WriteTo(os.Stdout); err != nil {
+					log.Fatalln(err)
+				}
+
+				if doc.filter != "" && !contains(history, doc.filter) {
+					_ = appendToFile(doc.options.historyFile, doc.filter)
 				}
 			}
 		}).
 		SetAutocompleteFunc(func(text string) []string {
-			if filterInput.GetText() == "" && len(history) > 0 {
+			if text == "" && len(history) > 0 {
 				return history
 			}
 
@@ -363,14 +350,20 @@ func createApp(doc Document, filter string) *tview.Application {
 						filt = "keys"
 					}
 
-					d := Document{input: doc.input, options: Options{monochrome: true}}
-					out, err := d.Filter("[" + filt + "] | unique | first")
+					d := Document{
+						input:   doc.input,
+						filter:  "[" + filt + "] | unique | first",
+						options: doc.options,
+					}
+
+					var buf bytes.Buffer
+					_, err := d.WriteTo(&buf)
 					if err != nil {
 						return
 					}
 
 					var keys []string
-					if err := json.Unmarshal([]byte(out), &keys); err != nil {
+					if err := json.Unmarshal(buf.Bytes(), &keys); err != nil {
 						return
 					}
 
@@ -390,25 +383,21 @@ func createApp(doc Document, filter string) *tview.Application {
 			}
 
 			return nil
-		})
+		}).
+		SetTitle("Filter").
+		SetBorder(true)
 
-	filterInput.SetTitle("Filter").SetBorder(true)
-
-	// Filter output with original filter
-	go func() {
-		orig, err := doc.Filter(".")
-		if err != nil {
+	// Generate formatted input and output with original filter
+	go app.QueueUpdateDraw(func() {
+		d := Document{input: doc.input, filter: ".", options: doc.options}
+		if _, err := d.WriteTo(inputView); err != nil {
 			log.Fatalln(err)
 		}
 
-		out, err := doc.Filter(filter)
-		if err != nil {
+		if _, err := doc.WriteTo(outputView); err != nil {
 			filterInput.SetFieldTextColor(tcell.ColorMaroon)
 		}
-
-		fmt.Fprint(tview.ANSIWriter(inputView), orig)
-		fmt.Fprint(outputWriter, out)
-	}()
+	})
 
 	grid := tview.NewGrid().
 		SetRows(0, 3, 4).
@@ -468,12 +457,32 @@ func main() {
 
 	options, filter, args := parseArgs()
 
-	doc := Document{options: options}
-	if err := doc.Read(args); err != nil {
-		log.Fatalln(err)
+	doc := Document{filter: filter, options: options}
+
+	if !options.nullInput {
+		var in io.Reader = os.Stdin
+		if len(args) > 0 {
+			var files []io.Reader
+			for _, fname := range args {
+				f, err := os.Open(fname)
+				if err != nil {
+					log.Fatalln(err)
+				}
+
+				defer f.Close()
+
+				files = append(files, f)
+			}
+
+			in = io.MultiReader(files...)
+		}
+
+		if _, err := doc.ReadFrom(in); err != nil {
+			log.Fatalln(err)
+		}
 	}
 
-	app := createApp(doc, filter)
+	app := createApp(doc)
 	if err := app.Run(); err != nil {
 		log.Fatalln(err)
 	}
