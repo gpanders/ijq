@@ -16,10 +16,8 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -156,44 +154,6 @@ func contains(arr []string, elem string) bool {
 	return false
 }
 
-func readFile(filepath string) ([]string, error) {
-	f, err := os.Open(filepath)
-	if err != nil {
-		return nil, err
-	}
-
-	var lines []string
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-
-	return lines, nil
-}
-
-func appendToFile(filepath, line string) error {
-	if filepath == "" {
-		return errors.New("no filepath specified")
-	}
-
-	file, err := os.OpenFile(filepath, (os.O_APPEND | os.O_CREATE | os.O_WRONLY), 0644)
-	if err != nil {
-		return err
-	}
-
-	defer file.Close()
-
-	if _, err := file.WriteString(line + "\n"); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func parseArgs() (Options, string, []string) {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "ijq - interactive jq\n\n")
@@ -270,9 +230,9 @@ func createApp(doc Document) *tview.Application {
 
 	var history []string
 	if doc.options.historyFile != "" {
-		// If reading the history file fails then just ignore the error and
-		// move on
-		history, _ = readFile(doc.options.historyFile)
+		if s, err := ioutil.ReadFile(doc.options.historyFile); err == nil {
+			history = strings.Fields(string(s))
+		}
 	}
 
 	var mutex sync.Mutex
@@ -322,8 +282,15 @@ func createApp(doc Document) *tview.Application {
 					log.Fatalln(err)
 				}
 
-				if doc.filter != "" && !contains(history, doc.filter) {
-					_ = appendToFile(doc.options.historyFile, doc.filter)
+				if doc.options.historyFile != "" && doc.filter != "" && !contains(history, doc.filter) {
+					f, err := os.OpenFile(doc.options.historyFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 644)
+					if err != nil {
+						return
+					}
+
+					defer f.Close()
+
+					fmt.Fprintln(f, doc.filter)
 				}
 			}
 		}).
