@@ -283,7 +283,7 @@ func createApp(doc Document) *tview.Application {
 				}
 
 				if doc.options.historyFile != "" && doc.filter != "" && !contains(history, doc.filter) {
-					f, err := os.OpenFile(doc.options.historyFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 644)
+					f, err := os.OpenFile(doc.options.historyFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 					if err != nil {
 						return
 					}
