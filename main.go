@@ -16,6 +16,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"flag"
@@ -231,7 +232,10 @@ func createApp(doc Document) *tview.Application {
 	var history []string
 	if doc.options.historyFile != "" {
 		if s, err := ioutil.ReadFile(doc.options.historyFile); err == nil {
-			history = strings.Fields(string(s))
+			scanner := bufio.NewScanner(bytes.NewReader(s))
+			for scanner.Scan() {
+				history = append(history, scanner.Text())
+			}
 		}
 	}
 
