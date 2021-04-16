@@ -16,7 +16,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"flag"
@@ -145,16 +144,6 @@ func (d *Document) WriteTo(w io.Writer) (n int64, err error) {
 
 }
 
-func contains(arr []string, elem string) bool {
-	for _, v := range arr {
-		if elem == v {
-			return true
-		}
-	}
-
-	return false
-}
-
 func parseArgs() (Options, string, []string) {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "ijq - interactive jq\n\n")
@@ -210,10 +199,6 @@ func parseArgs() (Options, string, []string) {
 		os.Exit(1)
 	}
 
-	if options.historyFile != "" {
-		_ = os.MkdirAll(filepath.Dir(options.historyFile), os.ModePerm)
-	}
-
 	return options, filter, args
 }
 
@@ -229,14 +214,10 @@ func createApp(doc Document) *tview.Application {
 	errorView := tview.NewTextView()
 	errorView.SetDynamicColors(true).SetTitle("Error").SetBorder(true)
 
-	var history []string
+	var filterHistory *history
+
 	if doc.options.historyFile != "" {
-		if s, err := ioutil.ReadFile(doc.options.historyFile); err == nil {
-			scanner := bufio.NewScanner(bytes.NewReader(s))
-			for scanner.Scan() {
-				history = append(history, scanner.Text())
-			}
-		}
+		filterHistory = &history{Path: doc.options.historyFile}
 	}
 
 	var mutex sync.Mutex
@@ -282,25 +263,19 @@ func createApp(doc Document) *tview.Application {
 					doc.options.forceColor = true
 				}
 
-				if _, err := doc.WriteTo(os.Stdout); err != nil {
-					log.Fatalln(err)
+				if filterHistory != nil && doc.filter != "" {
+					filterHistory.Add(doc.filter)
 				}
 
-				if doc.options.historyFile != "" && doc.filter != "" && !contains(history, doc.filter) {
-					f, err := os.OpenFile(doc.options.historyFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-					if err != nil {
-						return
-					}
-
-					defer f.Close()
-
-					fmt.Fprintln(f, doc.filter)
+				if _, err := doc.WriteTo(os.Stdout); err != nil {
+					log.Fatalln(err)
 				}
 			}
 		}).
 		SetAutocompleteFunc(func(text string) []string {
-			if text == "" && len(history) > 0 {
-				return history
+			if text == "" && filterHistory != nil {
+				saved, _ := filterHistory.Get()
+				return saved
 			}
 
 			if pos := strings.LastIndexByte(text, '.'); pos != -1 {

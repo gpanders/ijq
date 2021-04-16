@@ -18,6 +18,14 @@ ijq: $(SRCS)
 %.1: %.1.scd
 	scdoc < $< > $@
 
+.PHONY: test
+test:
+	go test -v -coverprofile=./cover.out .
+
+.PHONY: viewcover
+viewcover:
+	go tool cover -html=./cover.out
+
 .PHONY: install
 install: ijq ijq.1
 	install -d $(DESTDIR)$(bindir) $(DESTDIR)$(mandir)/man1
