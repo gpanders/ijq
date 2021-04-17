@@ -17,6 +17,9 @@ triggers:
       condition: failure
       to: Gregory Anders <greg@gpanders.com>
 tasks:
+    - test: |
+        cd ijq
+        make test
     - mirror: |
         cd ijq
         git push --force --mirror git@github.com:gpanders/ijq
