@@ -35,10 +35,13 @@ import (
 	"golang.org/x/term"
 )
 
+const DefaultCommand string = "jq"
+
 var Version string
 
 type Options struct {
 	compact     bool
+	command     string
 	nullInput   bool
 	slurp       bool
 	rawOutput   bool
@@ -116,7 +119,7 @@ func (d *Document) WriteTo(w io.Writer) (n int64, err error) {
 	}
 
 	args := append(opts.ToSlice(), d.filter)
-	cmd := exec.Command("jq", args...)
+	cmd := exec.Command(d.options.command, args...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return 0, err
@@ -161,6 +164,13 @@ func parseArgs() (Options, string, []string) {
 	flag.BoolVar(&options.forceColor, "C", false, "force colorized JSON, even if writing to a pipe or file")
 	flag.BoolVar(&options.monochrome, "M", false, "monochrome (don't colorize JSON)")
 	flag.BoolVar(&options.sortKeys, "S", false, "sort keys of objects on output")
+
+	flag.StringVar(
+		&options.command,
+		"jqbin",
+		DefaultCommand,
+		"name of or path to jq binary to use",
+	)
 
 	flag.StringVar(
 		&options.historyFile,
