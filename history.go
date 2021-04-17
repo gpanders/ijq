@@ -72,13 +72,13 @@ func (h *history) Get() ([]string, error) {
 
 	scanner := bufio.NewScanner(bytes.NewReader(filebytes))
 	for scanner.Scan() {
-		if err = scanner.Err(); err != nil {
-			return nil, fmt.Errorf(
-				"error retrieving history: %w", err,
-			)
-		}
-
 		expressions = append(expressions, scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf(
+			"error retrieving history: %w", err,
+		)
 	}
 
 	return expressions, nil
