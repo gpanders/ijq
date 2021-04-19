@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"path"
 	"strconv"
 	"testing"
 	"time"
@@ -89,6 +90,20 @@ func TestHistoryAddRepeating(t *testing.T) {
 	assert.Equal(t, []byte(contents), retrieved)
 
 	assert.NoError(t, os.Remove(histFile))
+}
+
+func TestHistoryWithinSubDir(t *testing.T) {
+	rootDir := "./testdata/myroot"
+
+	histFile := path.Join(rootDir, "myhistory")
+
+	h := &history{Path: histFile}
+
+	err := h.Add("one")
+	assert.NoError(t, err)
+	assert.FileExists(t, histFile)
+
+	assert.NoError(t, os.RemoveAll(rootDir))
 }
 
 func TestHistoryGetMissingFile(t *testing.T) {
