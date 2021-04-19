@@ -21,9 +21,19 @@ tasks:
         cd ijq
         make test
     - mirror: |
+        # Don't run on GitHub PRs
+        if [ "$BUILD_REASON" = 'github-pr' ]; then
+            exit 0
+        fi
+
         cd ijq
         git push --force --mirror git@github.com:gpanders/ijq
     - build: |
+        # Don't run on GitHub PRs
+        if [ "$BUILD_REASON" = 'github-pr' ]; then
+            exit 0
+        fi
+
         cd ijq
         tag=$(git describe --exact-match 2>/dev/null || true)
         if [ -z "$tag" ]; then
