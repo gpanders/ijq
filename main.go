@@ -215,6 +215,15 @@ func parseArgs() (Options, string, []string) {
 func createApp(doc Document) *tview.Application {
 	app := tview.NewApplication()
 
+	// tview uses colors for a dark background by default, so reset some of
+	// the styles to simply use the colors from the terminal to better
+	// support light color themes
+	tview.Styles.PrimitiveBackgroundColor = tcell.ColorDefault
+	tview.Styles.BorderColor = tcell.ColorDefault
+	tview.Styles.TitleColor = tcell.ColorDefault
+	tview.Styles.GraphicsColor = tcell.ColorDefault
+	tview.Styles.PrimaryTextColor = tcell.ColorDefault
+
 	inputView := tview.NewTextView()
 	inputView.SetDynamicColors(true).SetTitle("Input").SetBorder(true)
 
@@ -235,7 +244,7 @@ func createApp(doc Document) *tview.Application {
 	filterInput := tview.NewInputField()
 	filterInput.
 		SetText(doc.filter).
-		SetFieldBackgroundColor(tcell.ColorBlack).
+		SetFieldBackgroundColor(tcell.ColorDefault).
 		SetFieldTextColor(tcell.ColorSilver).
 		SetChangedFunc(func(text string) {
 			go app.QueueUpdateDraw(func() {
