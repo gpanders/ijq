@@ -1,49 +1,43 @@
 image: alpine/edge
+oauth: git.sr.ht/OBJECTS:RW
 packages:
     - git
     - go
     - make
     - musl-dev
     - scdoc
-sources:
-    - https://git.sr.ht/~gpanders/ijq
 secrets:
-    - 78f39fb6-1185-492f-9c21-f755e10b5e5d
-    - 4039c3d1-35f1-4378-b015-8a9c98b4a0cf
+    - 78f39fb6-1185-492f-9c21-f755e10b5e5d # ssh key for mirroring
 environment:
+    REPO_ID: 23987
     GIT_SSH_COMMAND: ssh -o StrictHostKeyChecking=no
 triggers:
     - action: email
       condition: failure
       to: Gregory Anders <greg@gpanders.com>
 tasks:
+    - setup: |
+        echo 'cd ijq' >> ~/.buildenv
     - test: |
-        cd ijq
         make test
-    - mirror: |
+    - nopr: |
         # Don't run on GitHub PRs
-        if [ "$BUILD_REASON" = 'github-pr' ]; then
-            exit 0
-        fi
-
-        cd ijq
+        [ "$BUILD_REASON" != 'github-pr' ] || complete-build
+    - mirror: |
         git push --force --mirror git@github.com:gpanders/ijq
     - build: |
-        # Don't run on GitHub PRs
-        if [ "$BUILD_REASON" = 'github-pr' ]; then
-            exit 0
-        fi
-
-        cd ijq
         tag=$(git describe --exact-match 2>/dev/null || true)
         if [ -z "$tag" ]; then
             echo "Current commit is not a tag; not building anything"
-        else
-            make
-            version=$(echo "$tag" | tr -d 'v')
-            mkdir ijq-"$version"
-            cp ijq ijq.1 COPYING ijq-"$version"/
-            tar czf ijq-"$version"-linux-x86_64.tar.gz ijq-"$version"
-            export SRHT_TOKEN=$(cat ~/.srht-token)
-            curl -H Authorization:"token $SRHT_TOKEN" -F file=@ijq-"$version"-linux-x86_64.tar.gz https://git.sr.ht/api/repos/ijq/artifacts/"$tag"
+            exit 0
         fi
+
+        make
+        version=$(echo "$tag" | tr -d 'v')
+        mkdir ijq-"$version"
+        cp ijq ijq.1 COPYING ijq-"$version"/
+        tar czf ijq-"$version"-linux-x86_64.tar.gz ijq-"$version"
+        acurl -F operations='{"query": "mutation upload($file: Upload!) { uploadArtifact(repoId: '$REPO_ID', revspec: \"'$tag'\", file: $file) { id } }", "variables": {"file": null}}' \
+              -F map='{ "0": ["variables.file"] }' \
+              -F 0=@ijq-"$version"-linux-x86_64.tar.gz \
+              https://git.sr.ht/query
