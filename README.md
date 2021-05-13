@@ -3,9 +3,12 @@ ijq
 
 Interactive `jq` tool. Like [jqplay] for the commandline.
 
-[![asciicast](https://asciinema.org/a/bIyt8DWu3L3QAP1BMKefoaUob.svg)](https://asciinema.org/a/bIyt8DWu3L3QAP1BMKefoaUob)
-
 [jqplay]: https://jqplay.org
+
+Demo
+----
+
+[![asciicast](https://asciinema.org/a/bIyt8DWu3L3QAP1BMKefoaUob.svg)](https://asciinema.org/a/bIyt8DWu3L3QAP1BMKefoaUob)
 
 Installation
 ------------
@@ -101,6 +104,21 @@ See the [jq documentation][colors] for more details.
 [colors]: https://stedolan.github.io/jq/manual/#Colors
 [xdg]: https://github.com/kyoh86/xdg#xdg-base-directory
 
+Contributing
+------------
+
+Have a question, comment, or feature request? Send an email to the [mailing
+list][list].
+
+Report bugs on the [ticket tracker][tickets].
+
+Send patches to [~gpanders/ijq@lists.sr.ht][list] or open a pull request on
+[GitHub][github].
+
+[list]: https://lists.sr.ht/~gpanders/ijq
+[github]: https://github.com/gpanders/ijq
+[tickets]: https://todo.sr.ht/~gpanders/ijq
+
 Similar Work
 ------------
 
@@ -108,3 +126,8 @@ Similar Work
 - [vim-jqplay]
 
 [vim-jqplay]: https://github.com/bfrg/vim-jqplay
+
+License
+-------
+
+[GPLv3](https://www.gnu.org/licenses/gpl-3.0.en.html)
