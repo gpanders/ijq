@@ -222,7 +222,6 @@ func createApp(doc Document) *tview.Application {
 	tview.Styles.BorderColor = tcell.ColorDefault
 	tview.Styles.TitleColor = tcell.ColorDefault
 	tview.Styles.GraphicsColor = tcell.ColorDefault
-	tview.Styles.PrimaryTextColor = tcell.ColorDefault
 
 	inputView := tview.NewTextView()
 	inputView.SetDynamicColors(true).SetTitle("Input").SetBorder(true)
@@ -245,7 +244,7 @@ func createApp(doc Document) *tview.Application {
 	filterInput.
 		SetText(doc.filter).
 		SetFieldBackgroundColor(tcell.ColorDefault).
-		SetFieldTextColor(tcell.ColorSilver).
+		SetFieldTextColor(tcell.ColorDefault).
 		SetChangedFunc(func(text string) {
 			go app.QueueUpdateDraw(func() {
 				errorView.Clear()
@@ -261,7 +260,7 @@ func createApp(doc Document) *tview.Application {
 					return
 				}
 
-				filterInput.SetFieldTextColor(tcell.ColorSilver)
+				filterInput.SetFieldTextColor(tcell.ColorDefault)
 				outputView.ScrollToBeginning()
 			})
 		}).
