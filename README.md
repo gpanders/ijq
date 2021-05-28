@@ -17,10 +17,6 @@ Installation
 
 The following package managers currently support `ijq`:
 
-#### Homebrew
-
-    brew install gpanders/tap/ijq
-
 #### MacPorts
 
     sudo port install ijq
