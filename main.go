@@ -1,4 +1,7 @@
-// Copyright (C) 2021 Gregory Anders
+// Copyright (C) 2021 Gregory Anders <greg@gpanders.com>
+// Copyright (C) 2021 Herby Gillot <herby.gillot@gmail.com>
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
