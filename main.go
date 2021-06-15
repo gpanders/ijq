@@ -33,8 +33,8 @@ import (
 	"sync"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/gpanders/tview"
 	"github.com/kyoh86/xdg"
-	"github.com/rivo/tview"
 	"golang.org/x/term"
 )
 
@@ -221,6 +221,7 @@ func createApp(doc Document) *tview.Application {
 	// tview uses colors for a dark background by default, so reset some of
 	// the styles to simply use the colors from the terminal to better
 	// support light color themes
+	tview.Styles.PrimaryTextColor = tcell.ColorDefault
 	tview.Styles.PrimitiveBackgroundColor = tcell.ColorDefault
 	tview.Styles.BorderColor = tcell.ColorDefault
 	tview.Styles.TitleColor = tcell.ColorDefault
@@ -351,6 +352,10 @@ func createApp(doc Document) *tview.Application {
 
 			return nil
 		}).
+		SetAutocompleteTextColor(tcell.ColorWhite).
+		SetAutocompleteBackgroundColor(tcell.ColorNavy).
+		SetAutocompleteSelectedTextColor(tcell.ColorBlack).
+		SetAutocompleteSelectedBackgroundColor(tcell.ColorWhite).
 		SetTitle("Filter").
 		SetBorder(true)
 
