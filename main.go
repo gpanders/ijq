@@ -33,8 +33,8 @@ import (
 	"sync"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/gpanders/tview"
 	"github.com/kyoh86/xdg"
+	"github.com/rivo/tview"
 	"golang.org/x/term"
 )
 
