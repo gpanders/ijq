@@ -40,6 +40,10 @@ import (
 
 const DefaultCommand string = "jq"
 
+// Special characters that, if present in a JSON key, need to be quoted in the
+// jq filter
+const SpecialChars string = ".-:$"
+
 var Version string
 
 type Options struct {
@@ -346,6 +350,9 @@ func createApp(doc Document) *tview.Application {
 
 					entries := keys[:0]
 					for _, k := range keys {
+						if strings.ContainsAny(k, SpecialChars) {
+							k = `"` + k + `"`
+						}
 						entries = append(entries, prefix+"."+k)
 					}
 
