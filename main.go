@@ -305,8 +305,17 @@ func createApp(doc Document) *tview.Application {
 
 				mutex.Lock()
 				defer mutex.Unlock()
-				entries, ok := filterMap[prefix]
+				candidates, ok := filterMap[prefix]
 				if ok {
+					cur := text[pos+1:]
+					var entries []string
+					for _, c := range candidates {
+						key := c[pos+1:]
+						if strings.HasPrefix(key, cur) {
+							entries = append(entries, c)
+						}
+					}
+
 					return entries
 				}
 
