@@ -21,6 +21,10 @@ The following package managers currently support `ijq`:
 
     sudo port install ijq
 
+#### Nix
+
+    nix-env -iA nixpkgs.ijq
+
 ### Download a pre-compiled release
 
 Select the version you want to download from [sourcehut] and download one of
@@ -29,7 +33,7 @@ binary and, optionally, the man page to the correct location.
 
 Example:
 
-    wget https://git.sr.ht/~gpanders/ijq/refs/vX.Y.Z/ijq-vX.Y.Z-linux-x86_64.tar.gz
+    wget https://git.sr.ht/~gpanders/ijq/refs/download/vX.Y.Z/ijq-vX.Y.Z-linux-x86_64.tar.gz
     tar xf ijq-vX.Y.Z-linux-x86_64.tar.gz
     cd ijq-vX.Y.Z
     cp ijq /usr/local/bin
