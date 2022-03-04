@@ -81,7 +81,7 @@ jq(1)
 Report bugs to https://todo.sr.ht/~gpanders/ijq (or send an email to
 ~gpanders/ijq@todo.sr.ht).
 
-Patches can be sent to ~gpanders/ijq-devel@lists.sr.ht.
+Patches can be sent to ~gpanders/ijq@lists.sr.ht.
 
 # AUTHOR
 
