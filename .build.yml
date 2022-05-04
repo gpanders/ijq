@@ -1,11 +1,12 @@
 image: alpine/edge
-oauth: git.sr.ht/OBJECTS:RW
+oauth: git.sr.ht/OBJECTS:RW git.sr.ht/REPOSITORIES:RO git.sr.ht/PROFILE:RO
 packages:
     - git
     - go
     - make
     - musl-dev
     - scdoc
+    - hut
 secrets:
     - 78f39fb6-1185-492f-9c21-f755e10b5e5d # ssh key for mirroring
 environment:
@@ -41,10 +42,7 @@ tasks:
             make GOOS="$os" GOARCH="$arch" clean all
             cp ijq ijq.1 COPYING ijq-"$version"/
             tar czf ijq-"$version"-"$os"-"$arch".tar.gz ijq-"$version"
-            acurl -F operations='{"query": "mutation upload($file: Upload!) { uploadArtifact(repoId: '$REPO_ID', revspec: \"'$tag'\", file: $file) { id } }", "variables": {"file": null}}' \
-                  -F map='{ "0": ["variables.file"] }' \
-                  -F 0=@ijq-"$version"-"$os"-"$arch".tar.gz \
-                  https://git.sr.ht/query
+            hut git artifact upload --rev "$tag" ijq-"$version"-"$os"-"$arch".tar.gz
         }
 
         build darwin amd64
