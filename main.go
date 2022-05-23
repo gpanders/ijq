@@ -42,7 +42,7 @@ const DefaultCommand string = "jq"
 
 // Special characters that, if present in a JSON key, need to be quoted in the
 // jq filter
-const SpecialChars string = ".-:$"
+const SpecialChars string = ".-:$/"
 
 var Version string
 
