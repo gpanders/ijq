@@ -368,10 +368,7 @@ func createApp(doc Document) *tview.Application {
 
 			return nil
 		}).
-		SetAutocompleteTextColor(tcell.ColorWhite).
-		SetAutocompleteBackgroundColor(tcell.ColorNavy).
-		SetAutocompleteSelectedTextColor(tcell.ColorBlack).
-		SetAutocompleteSelectedBackgroundColor(tcell.ColorWhite).
+		SetAutocompleteStyles(tcell.ColorBlack, tcell.StyleDefault, tcell.StyleDefault.Reverse(true)).
 		SetTitle("Filter").
 		SetBorder(true)
 
