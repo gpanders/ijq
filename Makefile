@@ -4,7 +4,7 @@ mandir = $(prefix)/share/man
 
 SRCS = main.go
 
-VERSION = 0.3.6
+VERSION = 0.3.8
 
 .PHONY: all
 all: ijq docs
