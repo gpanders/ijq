@@ -33,8 +33,8 @@ binary and, optionally, the man page to the correct location.
 
 Example:
 
-    wget https://git.sr.ht/~gpanders/ijq/refs/download/vX.Y.Z/ijq-vX.Y.Z-linux-x86_64.tar.gz
-    tar xf ijq-vX.Y.Z-linux-x86_64.tar.gz
+    wget https://git.sr.ht/~gpanders/ijq/refs/download/vX.Y.Z/ijq-vX.Y.Z-linux-amd64.tar.gz
+    tar xf ijq-vX.Y.Z-linux-amd64.tar.gz
     cd ijq-vX.Y.Z
     cp ijq /usr/local/bin
     mkdir -p /usr/local/share/man/man1
