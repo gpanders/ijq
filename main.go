@@ -445,6 +445,10 @@ func main() {
 
 	options, filter, args := parseArgs()
 
+	if _, err := exec.LookPath(options.command); err != nil {
+		log.Fatalf("%s is not installed or could not be found: %s\n", options.command, err)
+	}
+
 	doc := Document{filter: filter, options: options}
 
 	if !options.nullInput {
