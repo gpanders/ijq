@@ -539,7 +539,7 @@ func createApp(doc Document) *tview.Application {
 		return event
 	})
 
-	app.SetRoot(grid, true).SetFocus(grid)
+	app.SetRoot(grid, true).EnableMouse(true).SetFocus(grid)
 
 	return app
 }
