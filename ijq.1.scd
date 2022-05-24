@@ -127,7 +127,7 @@ All of the options mirror their counterparts in *jq*. The options are:
 
 # DEMO
 
-See https://asciinema.org/a/bIyt8DWu3L3QAP1BMKefoaUob for a demo.
+See https://asciinema.org/a/496932 for a demo.
 
 # SEE ALSO
 

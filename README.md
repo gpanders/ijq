@@ -8,7 +8,7 @@ Interactive `jq` tool. Like [jqplay] for the commandline.
 Demo
 ----
 
-[![asciicast](https://asciinema.org/a/bIyt8DWu3L3QAP1BMKefoaUob.svg)](https://asciinema.org/a/bIyt8DWu3L3QAP1BMKefoaUob)
+[![asciicast](https://asciinema.org/a/496932.svg)](https://asciinema.org/a/496932)
 
 Installation
 ------------
