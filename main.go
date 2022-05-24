@@ -122,7 +122,7 @@ func (d *Document) WriteTo(w io.Writer) (n int64, err error) {
 		opts.compact = false
 		opts.rawOutput = false
 		tv.Clear()
-		w = tview.ANSIWriter(w)
+		w = tview.ANSIWriter(tv)
 	}
 
 	args := append(opts.ToSlice(), d.filter)
@@ -219,6 +219,45 @@ func parseArgs() (Options, string, []string) {
 	return options, filter, args
 }
 
+func scrollHalfPage(tv *tview.TextView, up bool) {
+	_, _, _, height := tv.GetInnerRect()
+	row, col := tv.GetScrollOffset()
+	if up {
+		tv.ScrollTo(row-height/2, col)
+	} else {
+		tv.ScrollTo(row+height/2, col)
+	}
+}
+
+func scrollHorizontally(tv *tview.TextView, end bool) {
+	if end {
+		text := tv.GetText(true)
+		_, _, width, height := tv.GetInnerRect()
+		row, _ := tv.GetScrollOffset()
+		maxLen := 0
+		for i, line := range strings.Split(text, "\n") {
+			if i < row {
+				continue
+			}
+
+			if i > row+height {
+				break
+			}
+
+			if length := len(line); length > maxLen {
+				maxLen = length
+			}
+		}
+
+		if maxLen > width {
+			tv.ScrollTo(row, maxLen-width)
+		}
+	} else {
+		row, _ := tv.GetScrollOffset()
+		tv.ScrollTo(row, 0)
+	}
+}
+
 func createApp(doc Document) *tview.Application {
 	app := tview.NewApplication()
 
@@ -232,10 +271,10 @@ func createApp(doc Document) *tview.Application {
 	tview.Styles.GraphicsColor = tcell.ColorDefault
 
 	inputView := tview.NewTextView()
-	inputView.SetDynamicColors(true).SetTitle("Input").SetBorder(true)
+	inputView.SetDynamicColors(true).SetWrap(false).SetTitle("Input").SetBorder(true)
 
 	outputView := tview.NewTextView()
-	outputView.SetDynamicColors(true).SetTitle("Output").SetBorder(true)
+	outputView.SetDynamicColors(true).SetWrap(false).SetTitle("Output").SetBorder(true)
 
 	errorView := tview.NewTextView()
 	errorView.SetDynamicColors(true).SetTitle("Error").SetBorder(true)
@@ -401,14 +440,48 @@ func createApp(doc Document) *tview.Application {
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		shift := event.Modifiers()&tcell.ModShift != 0
+		focused := app.GetFocus()
+
 		switch key := event.Key(); key {
 		case tcell.KeyCtrlN:
 			return tcell.NewEventKey(tcell.KeyDown, ' ', tcell.ModNone)
 		case tcell.KeyCtrlP:
 			return tcell.NewEventKey(tcell.KeyUp, ' ', tcell.ModNone)
+		case tcell.KeyCtrlV:
+			return tcell.NewEventKey(tcell.KeyPgDn, ' ', tcell.ModNone)
+		case tcell.KeyCtrlA:
+			if tv, ok := focused.(*tview.TextView); ok {
+				scrollHorizontally(tv, false)
+				return nil
+			}
+		case tcell.KeyCtrlE:
+			if tv, ok := focused.(*tview.TextView); ok {
+				scrollHorizontally(tv, true)
+				return nil
+			}
+		case tcell.KeyCtrlU:
+			if tv, ok := focused.(*tview.TextView); ok {
+				scrollHalfPage(tv, true)
+				return nil
+			}
+		case tcell.KeyCtrlD:
+			if tv, ok := focused.(*tview.TextView); ok {
+				scrollHalfPage(tv, false)
+				return nil
+			}
 		case tcell.KeyUp:
 			if shift && filterInput.HasFocus() {
 				app.SetFocus(inputView)
+				return nil
+			}
+		case tcell.KeyLeft:
+			if shift {
+				app.SetFocus(inputView)
+				return nil
+			}
+		case tcell.KeyRight:
+			if shift {
+				app.SetFocus(outputView)
 				return nil
 			}
 		case tcell.KeyDown:
@@ -416,15 +489,50 @@ func createApp(doc Document) *tview.Application {
 				app.SetFocus(filterInput)
 				return nil
 			}
-		case tcell.KeyLeft:
-			if outputView.HasFocus() {
-				app.SetFocus(inputView)
-				return nil
-			}
-		case tcell.KeyRight:
+		case tcell.KeyTab:
 			if inputView.HasFocus() {
 				app.SetFocus(outputView)
 				return nil
+			} else if outputView.HasFocus() {
+				app.SetFocus(filterInput)
+				return nil
+			} else if filterInput.HasFocus() {
+				return tcell.NewEventKey(tcell.KeyDown, ' ', tcell.ModNone)
+			}
+		case tcell.KeyBacktab:
+			if inputView.HasFocus() {
+				app.SetFocus(filterInput)
+				return nil
+			} else if outputView.HasFocus() {
+				app.SetFocus(inputView)
+				return nil
+			} else if filterInput.HasFocus() {
+				return tcell.NewEventKey(tcell.KeyUp, ' ', tcell.ModNone)
+			}
+		}
+
+		if tv, ok := focused.(*tview.TextView); ok {
+			switch ru := event.Rune(); ru {
+			case '0':
+				scrollHorizontally(tv, false)
+				return nil
+			case '$':
+				scrollHorizontally(tv, true)
+				return nil
+			case 'd':
+				scrollHalfPage(tv, false)
+				return nil
+			case 'u':
+				scrollHalfPage(tv, true)
+				return nil
+			case 'b':
+				return tcell.NewEventKey(tcell.KeyCtrlB, ' ', tcell.ModNone)
+			case 'f':
+				return tcell.NewEventKey(tcell.KeyCtrlF, ' ', tcell.ModNone)
+			case 'v':
+				if event.Modifiers()&tcell.ModAlt != 0 {
+					return tcell.NewEventKey(tcell.KeyPgUp, ' ', tcell.ModNone)
+				}
 			}
 		}
 
