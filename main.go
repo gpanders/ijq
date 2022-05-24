@@ -115,14 +115,12 @@ func (d *Document) ReadFrom(r io.Reader) (n int64, err error) {
 // Filter the document with the given jq filter and options
 func (d *Document) WriteTo(w io.Writer) (n int64, err error) {
 	opts := d.options
-	if tv, ok := w.(*tview.TextView); ok {
+	if _, ok := w.(*tview.TextView); ok {
 		// Writer is a TextView, so set options accordingly
 		opts.forceColor = true
 		opts.monochrome = false
 		opts.compact = false
 		opts.rawOutput = false
-		tv.Clear()
-		w = tview.ANSIWriter(tv)
 	}
 
 	args := append(opts.ToSlice(), d.filter)
@@ -146,6 +144,11 @@ func (d *Document) WriteTo(w io.Writer) (n int64, err error) {
 			exiterr.Stderr = out
 		}
 		return 0, err
+	}
+
+	if tv, ok := w.(*tview.TextView); ok {
+		w = tview.ANSIWriter(tv)
+		tv.Clear()
 	}
 
 	m, err := w.Write(out)
