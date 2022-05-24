@@ -258,6 +258,24 @@ func scrollHorizontally(tv *tview.TextView, end bool) {
 	}
 }
 
+func updateScrollIndicator(name string, tv *tview.TextView) {
+	row, _ := tv.GetScrollOffset()
+	if row <= 0 {
+		tv.SetTitle(fmt.Sprintf("%s (Top)", name))
+		return
+	}
+
+	lines := tv.GetOriginalLineCount()
+	_, _, _, height := tv.GetInnerRect()
+	if row+height >= lines {
+		tv.SetTitle(fmt.Sprintf("%s (Bot)", name))
+		return
+	}
+
+	percent := row * 100 / lines
+	tv.SetTitle(fmt.Sprintf("%s (%d%%)", name, percent))
+}
+
 func createApp(doc Document) *tview.Application {
 	app := tview.NewApplication()
 
@@ -271,10 +289,10 @@ func createApp(doc Document) *tview.Application {
 	tview.Styles.GraphicsColor = tcell.ColorDefault
 
 	inputView := tview.NewTextView()
-	inputView.SetDynamicColors(true).SetWrap(false).SetTitle("Input").SetBorder(true)
+	inputView.SetDynamicColors(true).SetWrap(false).SetBorder(true)
 
 	outputView := tview.NewTextView()
-	outputView.SetDynamicColors(true).SetWrap(false).SetTitle("Output").SetBorder(true)
+	outputView.SetDynamicColors(true).SetWrap(false).SetBorder(true)
 
 	errorView := tview.NewTextView()
 	errorView.SetDynamicColors(true).SetTitle("Error").SetBorder(true)
@@ -537,6 +555,12 @@ func createApp(doc Document) *tview.Application {
 		}
 
 		return event
+	})
+
+	app.SetBeforeDrawFunc(func(_ tcell.Screen) bool {
+		updateScrollIndicator("Input", inputView)
+		updateScrollIndicator("Output", outputView)
+		return false
 	})
 
 	app.SetRoot(grid, true).EnableMouse(true).SetFocus(grid)
