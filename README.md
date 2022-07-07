@@ -15,15 +15,7 @@ Installation
 
 ### Install from package manager
 
-The following package managers currently support `ijq`:
-
-#### MacPorts
-
-    sudo port install ijq
-
-#### Nix
-
-    nix-env -iA nixpkgs.ijq
+[![Packaging status](https://repology.org/badge/vertical-allrepos/ijq.svg?exclude_unsupported=1)](https://repology.org/project/ijq/versions)
 
 ### Download a pre-compiled release
 
