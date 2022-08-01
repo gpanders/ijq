@@ -23,7 +23,7 @@ tasks:
         make test
     - nopr: |
         # Don't run on GitHub PRs
-        [ "$BUILD_REASON" != 'github-pr' ] || complete-build
+        [ "$BUILD_SUBMITTER" = 'git.sr.ht' ] || complete-build
     - mirror: |
         git push --force --mirror git@github.com:gpanders/ijq
     - build: |
