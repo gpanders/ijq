@@ -38,6 +38,13 @@ type history struct {
 
 var colorTagRe = regexp.MustCompile(`\[([^]]+)\]`)
 
+// Escape bracketed expressions (like [this]) because they are interpreted as
+// color tags by tview.
+// See https://godocs.io/github.com/rivo/tview#hdr-Colors
+func escape(s string) string {
+	return colorTagRe.ReplaceAllString(s, "[$1[]")
+}
+
 func (h *history) Init(path string) error {
 	h.path = path
 
@@ -56,11 +63,7 @@ func (h *history) Init(path string) error {
 	for scanner.Scan() {
 		line := scanner.Text()
 		h.lines = append(h.lines, line)
-
-		// Escape bracketed expressions (like [this]) because they are
-		// interpreted as color tags by tview.
-		// See https://godocs.io/github.com/rivo/tview#hdr-Colors
-		h.Items = append(h.Items, colorTagRe.ReplaceAllString(line, "[$1[]"))
+		h.Items = append(h.Items, escape(line))
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -89,6 +92,7 @@ func (h *history) Add(expression string) error {
 	}
 
 	h.lines = append(h.lines, expression)
+	h.Items = append(h.Items, escape(expression))
 
 	file, err := h.openFile()
 	if err != nil {

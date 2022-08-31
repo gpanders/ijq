@@ -44,16 +44,17 @@ func makeHistoryFilename() string {
 }
 
 func TestHistoryAddNoFilename(t *testing.T) {
-	h := &history{}
-
+	var h history
 	err := h.Add("foo")
-	assert.Error(t, err)
-	assert.ErrorIs(t, err, ErrEmptyPath)
+	assert.NoError(t, err)
+	assert.Nil(t, err)
+	assert.Empty(t, h.Items)
 }
 
 func TestHistoryAddEmptyString(t *testing.T) {
 	histfile := makeHistoryFilename()
-	h := &history{Path: histfile}
+	var h history
+	h.Init(histfile)
 	err := h.Add("")
 	assert.NoError(t, err)
 	assert.Nil(t, err)
@@ -78,7 +79,8 @@ func TestHistoryAdd(t *testing.T) {
 	err := ioutil.WriteFile(histFile, []byte(before), 0644)
 	assert.NoError(t, err)
 
-	h := &history{Path: histFile}
+	var h history
+	h.Init(histFile)
 
 	err = h.Add("three")
 	assert.NoError(t, err)
@@ -98,7 +100,8 @@ func TestHistoryAddRepeating(t *testing.T) {
 	err := ioutil.WriteFile(histFile, []byte(contents), 0644)
 	assert.NoError(t, err)
 
-	h := &history{Path: histFile}
+	var h history
+	h.Init(histFile)
 
 	err = h.Add("one")
 	assert.NoError(t, err)
@@ -115,7 +118,8 @@ func TestHistoryWithinSubDir(t *testing.T) {
 
 	histFile := path.Join(rootDir, "myhistory")
 
-	h := &history{Path: histFile}
+	var h history
+	h.Init(histFile)
 
 	err := h.Add("one")
 	assert.NoError(t, err)
@@ -127,29 +131,25 @@ func TestHistoryWithinSubDir(t *testing.T) {
 func TestHistoryGetMissingFile(t *testing.T) {
 	historyFile := "./this.does.not.exist"
 
-	h := &history{Path: historyFile}
-
-	saved, err := h.Get()
-	assert.NoError(t, err)
-	assert.Nil(t, saved)
+	var h history
+	h.Init(historyFile)
 	assert.NoFileExists(t, historyFile)
 }
 
-func TestHistoryGet(t *testing.T) {
+func TestHistoryColorTags(t *testing.T) {
 	histFile := makeHistoryFilename()
 
-	fileContents := "one\ntwo\nthree\n"
+	fileContents := "[.test]\n"
 
-	expressions := []string{"one", "two", "three"}
+	expressions := []string{"[.test[]"}
 
 	err := ioutil.WriteFile(histFile, []byte(fileContents), 0644)
 	assert.NoError(t, err)
 
-	h := &history{Path: histFile}
+	var h history
+	h.Init(histFile)
 
-	retrieved, err := h.Get()
-	assert.NoError(t, err)
-	assert.Equal(t, expressions, retrieved)
+	assert.Equal(t, expressions, h.Items)
 
 	assert.NoError(t, os.Remove(histFile))
 }
@@ -157,7 +157,8 @@ func TestHistoryGet(t *testing.T) {
 func TestHistory(t *testing.T) {
 	histFile := makeHistoryFilename()
 
-	h := &history{Path: histFile}
+	var h history
+	h.Init(histFile)
 
 	var err error
 
@@ -168,12 +169,11 @@ func TestHistory(t *testing.T) {
 	err = h.Add("three")
 	assert.NoError(t, err)
 
-	retrieved, err := h.Get()
 	assert.NoError(t, err)
 
 	assert.Equal(
 		t,
-		retrieved,
+		h.Items,
 		[]string{"one", "two", "three"},
 	)
 
@@ -181,12 +181,9 @@ func TestHistory(t *testing.T) {
 	err = h.Add("four")
 	assert.NoError(t, err)
 
-	retrieved, err = h.Get()
-	assert.NoError(t, err)
-
 	assert.Equal(
 		t,
-		retrieved,
+		h.Items,
 		[]string{"one", "two", "three", "four"},
 	)
 
@@ -194,12 +191,9 @@ func TestHistory(t *testing.T) {
 	err = h.Add("one")
 	assert.NoError(t, err)
 
-	retrieved, err = h.Get()
-	assert.NoError(t, err)
-
 	assert.Equal(
 		t,
-		retrieved,
+		h.Items,
 		[]string{"one", "two", "three", "four"},
 	)
 
