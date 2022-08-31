@@ -136,24 +136,6 @@ func TestHistoryGetMissingFile(t *testing.T) {
 	assert.NoFileExists(t, historyFile)
 }
 
-func TestHistoryColorTags(t *testing.T) {
-	histFile := makeHistoryFilename()
-
-	fileContents := "[.test]\n"
-
-	expressions := []string{"[.test[]"}
-
-	err := ioutil.WriteFile(histFile, []byte(fileContents), 0644)
-	assert.NoError(t, err)
-
-	var h history
-	h.Init(histFile)
-
-	assert.Equal(t, expressions, h.Items)
-
-	assert.NoError(t, os.Remove(histFile))
-}
-
 func TestHistory(t *testing.T) {
 	histFile := makeHistoryFilename()
 

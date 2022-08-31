@@ -355,7 +355,11 @@ func createApp(doc Document) *tview.Application {
 		}).
 		SetAutocompleteFunc(func(text string) []string {
 			if text == "" {
-				return filterHistory.Items
+				var entries []string
+				for _, item := range filterHistory.Items {
+					entries = append(entries, tview.Escape(item))
+				}
+				return entries
 			}
 
 			if pos := strings.LastIndexByte(text, '.'); pos != -1 {

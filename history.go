@@ -26,23 +26,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 )
 
 type history struct {
 	path  string
-	lines []string
 	Items []string
-}
-
-var colorTagRe = regexp.MustCompile(`\[([^]]+)\]`)
-
-// Escape bracketed expressions (like [this]) because they are interpreted as
-// color tags by tview.
-// See https://godocs.io/github.com/rivo/tview#hdr-Colors
-func escape(s string) string {
-	return colorTagRe.ReplaceAllString(s, "[$1[]")
 }
 
 func (h *history) Init(path string) error {
@@ -61,9 +50,7 @@ func (h *history) Init(path string) error {
 
 	scanner := bufio.NewScanner(bytes.NewReader(filebytes))
 	for scanner.Scan() {
-		line := scanner.Text()
-		h.lines = append(h.lines, line)
-		h.Items = append(h.Items, escape(line))
+		h.Items = append(h.Items, scanner.Text())
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -87,12 +74,11 @@ func (h *history) Add(expression string) error {
 
 	// Don't continue with adding the expression if it is saved in history
 	// already.
-	if contains(h.lines, expression) {
+	if contains(h.Items, expression) {
 		return nil
 	}
 
-	h.lines = append(h.lines, expression)
-	h.Items = append(h.Items, escape(expression))
+	h.Items = append(h.Items, expression)
 
 	file, err := h.openFile()
 	if err != nil {
