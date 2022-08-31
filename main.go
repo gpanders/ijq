@@ -300,11 +300,8 @@ func createApp(doc Document) *tview.Application {
 	errorView := tview.NewTextView()
 	errorView.SetDynamicColors(true).SetTitle("Error").SetBorder(true)
 
-	var filterHistory *history
-
-	if doc.options.historyFile != "" {
-		filterHistory = &history{Path: doc.options.historyFile}
-	}
+	var filterHistory history
+	filterHistory.Init(doc.options.historyFile)
 
 	var mutex sync.Mutex
 	filterMap := make(map[string][]string)
@@ -349,9 +346,7 @@ func createApp(doc Document) *tview.Application {
 					doc.options.forceColor = true
 				}
 
-				if filterHistory != nil && doc.filter != "" {
-					filterHistory.Add(doc.filter)
-				}
+				filterHistory.Add(doc.filter)
 
 				if _, err := doc.WriteTo(os.Stdout); err != nil {
 					log.Fatalln(err)
@@ -359,9 +354,8 @@ func createApp(doc Document) *tview.Application {
 			}
 		}).
 		SetAutocompleteFunc(func(text string) []string {
-			if text == "" && filterHistory != nil {
-				saved, _ := filterHistory.Get()
-				return saved
+			if text == "" {
+				return filterHistory.Items
 			}
 
 			if pos := strings.LastIndexByte(text, '.'); pos != -1 {

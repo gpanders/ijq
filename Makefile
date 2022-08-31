@@ -2,7 +2,7 @@ prefix = /usr/local
 bindir = $(prefix)/bin
 mandir = $(prefix)/share/man
 
-SRCS = main.go
+SRCS = main.go history.go
 
 VERSION = 0.4.0
 
