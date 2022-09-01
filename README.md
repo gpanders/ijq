@@ -102,7 +102,9 @@ Contributing
 Have a question, comment, or feature request? Send an email to the [mailing
 list][list].
 
-Report bugs on the [ticket tracker][tickets].
+Report bugs on the [ticket tracker][tickets]. You can file a ticket without a
+sourcehut account by sending a [plain text email](useplaintext.email) to
+[~gpanders/ijq@todo.sr.ht](mailto://~gpanders/ijq@todo.sr.ht).
 
 Send patches to [~gpanders/ijq@lists.sr.ht][list] or open a pull request on
 [GitHub][github].
