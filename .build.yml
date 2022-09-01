@@ -9,6 +9,8 @@ packages:
     - hut
 secrets:
     - 78f39fb6-1185-492f-9c21-f755e10b5e5d # ssh key for mirroring
+sources:
+    - https://git.sr.ht/~gpanders/ijq
 environment:
     REPO_ID: 23987
     GIT_SSH_COMMAND: ssh -o StrictHostKeyChecking=no
