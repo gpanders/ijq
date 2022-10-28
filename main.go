@@ -44,6 +44,8 @@ const DefaultCommand string = "jq"
 // jq filter
 const SpecialChars string = ".-:$/"
 
+const Alphabet string = "abcdefghijklmnopqrstuvwxyz"
+
 var Version string
 
 type Options struct {
@@ -408,7 +410,7 @@ func createApp(doc Document) *tview.Application {
 
 					entries := keys[:0]
 					for _, k := range keys {
-						if strings.ContainsAny(k, SpecialChars) {
+						if strings.ContainsAny(k, SpecialChars) || !strings.Contains(Alphabet, string(k[0])) {
 							k = `"` + k + `"`
 						}
 						entries = append(entries, prefix+"."+k)
