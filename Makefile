@@ -39,3 +39,6 @@ uninstall:
 .PHONY: clean
 clean:
 	rm -f ijq ijq.1
+
+demo/ijq.gif: demo/ijq.tape
+	vhs < $<
