@@ -24,7 +24,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -207,7 +206,7 @@ func parseArgs() (Options, string, []string) {
 	stdinIsTty := term.IsTerminal(int(os.Stdin.Fd()))
 
 	if *filterFile != "" {
-		contents, err := ioutil.ReadFile(*filterFile)
+		contents, err := os.ReadFile(*filterFile)
 		if err != nil {
 			log.Fatalln(err)
 		}
