@@ -155,7 +155,6 @@ func (d *Document) WriteTo(w io.Writer) (n int64, err error) {
 	m, err := w.Write(out)
 	n = int64(m)
 	return n, err
-
 }
 
 func parseArgs() (Options, string, []string) {
@@ -262,21 +261,20 @@ func scrollHorizontally(tv *tview.TextView, end bool) {
 	}
 }
 
-func updateScrollIndicator(name string, tv *tview.TextView) {
+func updateScrollIndicator(name string, lineCount int, tv *tview.TextView) {
 	row, _ := tv.GetScrollOffset()
 	if row <= 0 {
 		tv.SetTitle(fmt.Sprintf("%s (Top)", name))
 		return
 	}
 
-	lines := tv.GetOriginalLineCount()
 	_, _, _, height := tv.GetInnerRect()
-	if row+height >= lines {
+	if row+height >= lineCount {
 		tv.SetTitle(fmt.Sprintf("%s (Bot)", name))
 		return
 	}
 
-	percent := row * 100 / lines
+	percent := row * 100 / lineCount
 	tv.SetTitle(fmt.Sprintf("%s (%d%%)", name, percent))
 }
 
@@ -304,6 +302,9 @@ func createApp(doc Document) *tview.Application {
 	var filterHistory history
 	filterHistory.Init(doc.options.historyFile)
 
+	var inputLineCount int
+	var outputLineCount int
+
 	var mutex sync.Mutex
 	filterMap := make(map[string][]string)
 	filterInput := tview.NewInputField()
@@ -327,6 +328,7 @@ func createApp(doc Document) *tview.Application {
 					return
 				}
 
+				outputLineCount = strings.Count(outputView.GetText(false), "\n")
 				filterInput.SetFieldTextColor(tcell.ColorDefault)
 			})
 		}).
@@ -442,6 +444,9 @@ func createApp(doc Document) *tview.Application {
 		if _, err := doc.WriteTo(outputView); err != nil {
 			filterInput.SetFieldTextColor(tcell.ColorMaroon)
 		}
+
+		inputLineCount = strings.Count(inputView.GetText(false), "\n")
+		outputLineCount = strings.Count(outputView.GetText(false), "\n")
 	})
 
 	grid := tview.NewGrid().
@@ -568,8 +573,8 @@ func createApp(doc Document) *tview.Application {
 	})
 
 	app.SetBeforeDrawFunc(func(_ tcell.Screen) bool {
-		updateScrollIndicator("Input", inputView)
-		updateScrollIndicator("Output", outputView)
+		updateScrollIndicator("Input", inputLineCount, inputView)
+		updateScrollIndicator("Output", outputLineCount, outputView)
 		return false
 	})
 
