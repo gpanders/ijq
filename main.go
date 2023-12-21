@@ -553,6 +553,13 @@ func createApp(doc Document) *tview.Application {
 				if event.Modifiers()&tcell.ModAlt != 0 {
 					return tcell.NewEventKey(tcell.KeyPgUp, ' ', tcell.ModNone)
 				}
+			case 'G':
+				// tview handles G natively but does not
+				// redraw, so the scroll indicator doesn't
+				// update. So we handle G ourselves and force a
+				// redraw
+				tv.ScrollToEnd()
+				app.ForceDraw()
 			}
 		}
 
