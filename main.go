@@ -315,6 +315,7 @@ func createApp(doc Document) *tview.Application {
 			go app.QueueUpdateDraw(func() {
 				errorView.Clear()
 				doc.filter = text
+				outputView.ScrollToBeginning()
 				_, err := doc.WriteTo(outputView)
 				if err != nil {
 					filterInput.SetFieldTextColor(tcell.ColorMaroon)
@@ -327,7 +328,6 @@ func createApp(doc Document) *tview.Application {
 				}
 
 				filterInput.SetFieldTextColor(tcell.ColorDefault)
-				outputView.ScrollToBeginning()
 			})
 		}).
 		SetDoneFunc(func(key tcell.Key) {
@@ -438,6 +438,7 @@ func createApp(doc Document) *tview.Application {
 			log.Fatalln(err)
 		}
 
+		outputView.ScrollToBeginning()
 		if _, err := doc.WriteTo(outputView); err != nil {
 			filterInput.SetFieldTextColor(tcell.ColorMaroon)
 		}
