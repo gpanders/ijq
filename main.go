@@ -295,6 +295,10 @@ func createApp(doc Document) *tview.Application {
 
 	outputView := tview.NewTextView()
 	outputView.SetDynamicColors(true).SetWrap(false).SetBorder(true)
+	outputView.SetChangedFunc(func() {
+		outputView.ScrollToBeginning()
+		app.Draw()
+	})
 
 	errorView := tview.NewTextView()
 	errorView.SetDynamicColors(true).SetTitle("Error").SetBorder(true)
@@ -313,10 +317,9 @@ func createApp(doc Document) *tview.Application {
 		SetFieldBackgroundColor(tcell.ColorDefault).
 		SetFieldTextColor(tcell.ColorDefault).
 		SetChangedFunc(func(text string) {
-			go app.QueueUpdateDraw(func() {
-				errorView.Clear()
-				doc.filter = text
-				outputView.ScrollToBeginning()
+			errorView.Clear()
+			doc.filter = text
+			go func() {
 				_, err := doc.WriteTo(outputView)
 				if err != nil {
 					filterInput.SetFieldTextColor(tcell.ColorMaroon)
@@ -330,7 +333,7 @@ func createApp(doc Document) *tview.Application {
 
 				outputLineCount = strings.Count(outputView.GetText(false), "\n")
 				filterInput.SetFieldTextColor(tcell.ColorDefault)
-			})
+			}()
 		}).
 		SetDoneFunc(func(key tcell.Key) {
 			switch key {
