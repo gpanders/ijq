@@ -106,6 +106,10 @@ type Document struct {
 	options Options
 }
 
+func (d Document) WithFilter(filter string) Document {
+	return Document{input: d.input, filter: filter, options: d.options}
+}
+
 func (d *Document) ReadFrom(r io.Reader) (n int64, err error) {
 	var buf bytes.Buffer
 	n, err = buf.ReadFrom(r)
@@ -113,8 +117,7 @@ func (d *Document) ReadFrom(r io.Reader) (n int64, err error) {
 	return n, err
 }
 
-// Filter the document with the given jq filter and options
-func (d *Document) WriteTo(w io.Writer) (n int64, err error) {
+func (d Document) WriteTo(w io.Writer) (n int64, err error) {
 	opts := d.options
 	if _, ok := w.(*tview.TextView); ok {
 		// Writer is a TextView, so set options accordingly
@@ -309,6 +312,9 @@ func createApp(doc Document) *tview.Application {
 	var inputLineCount int
 	var outputLineCount int
 
+	ch := make(chan Document)
+	done := make(chan int)
+
 	var mutex sync.Mutex
 	filterMap := make(map[string][]string)
 	filterInput := tview.NewInputField()
@@ -318,22 +324,7 @@ func createApp(doc Document) *tview.Application {
 		SetFieldTextColor(tcell.ColorDefault).
 		SetChangedFunc(func(text string) {
 			errorView.Clear()
-			doc.filter = text
-			go func() {
-				_, err := doc.WriteTo(outputView)
-				if err != nil {
-					filterInput.SetFieldTextColor(tcell.ColorMaroon)
-					exitErr, ok := err.(*exec.ExitError)
-					if ok {
-						fmt.Fprint(tview.ANSIWriter(errorView), string(exitErr.Stderr))
-					}
-
-					return
-				}
-
-				outputLineCount = strings.Count(outputView.GetText(false), "\n")
-				filterInput.SetFieldTextColor(tcell.ColorDefault)
-			}()
+			ch <- doc.WithFilter(text)
 		}).
 		SetDoneFunc(func(key tcell.Key) {
 			switch key {
@@ -395,14 +386,8 @@ func createApp(doc Document) *tview.Application {
 						filt = "keys"
 					}
 
-					d := Document{
-						input:   doc.input,
-						filter:  "[" + filt + "] | unique | first",
-						options: doc.options,
-					}
-
 					var buf bytes.Buffer
-					_, err := d.WriteTo(&buf)
+					_, err := doc.WithFilter("[" + filt + "] | unique | first").WriteTo(&buf)
 					if err != nil {
 						return
 					}
@@ -414,7 +399,8 @@ func createApp(doc Document) *tview.Application {
 
 					entries := keys[:0]
 					for _, k := range keys {
-						if strings.ContainsAny(k, SpecialChars) || !strings.Contains(Alphabet, string(k[0])) {
+						first := strings.ToLower(string(k[0]))
+						if strings.ContainsAny(k, SpecialChars) || !strings.Contains(Alphabet, first) {
 							k = `"` + k + `"`
 						}
 						entries = append(entries, prefix+"."+k)
@@ -438,8 +424,7 @@ func createApp(doc Document) *tview.Application {
 
 	// Generate formatted input and output with original filter
 	go app.QueueUpdateDraw(func() {
-		d := Document{input: doc.input, filter: ".", options: doc.options}
-		if _, err := d.WriteTo(inputView); err != nil {
+		if _, err := doc.WithFilter(".").WriteTo(inputView); err != nil {
 			log.Fatalln(err)
 		}
 
@@ -451,6 +436,38 @@ func createApp(doc Document) *tview.Application {
 		inputLineCount = strings.Count(inputView.GetText(false), "\n")
 		outputLineCount = strings.Count(outputView.GetText(false), "\n")
 	})
+
+	go func() {
+		ready := true
+		for {
+			select {
+			case d := <-ch:
+				if !ready {
+					break
+				}
+
+				ready = false
+
+				go func() {
+					_, err := d.WriteTo(outputView)
+					if err != nil {
+						filterInput.SetFieldTextColor(tcell.ColorMaroon)
+						exitErr, ok := err.(*exec.ExitError)
+						if ok {
+							fmt.Fprint(tview.ANSIWriter(errorView), string(exitErr.Stderr))
+						}
+					} else {
+						outputLineCount = strings.Count(outputView.GetText(false), "\n")
+						filterInput.SetFieldTextColor(tcell.ColorDefault)
+					}
+
+					done <- 0
+				}()
+			case <-done:
+				ready = true
+			}
+		}
+	}()
 
 	grid := tview.NewGrid().
 		SetRows(0, 3, 4).
