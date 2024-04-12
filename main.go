@@ -312,10 +312,10 @@ func createApp(doc Document) *tview.Application {
 	var inputLineCount int
 	var outputLineCount int
 
-	ch := make(chan Document)
-	done := make(chan int)
-
 	var mutex sync.Mutex
+	cond := sync.NewCond(&mutex)
+	pending := false
+
 	filterMap := make(map[string][]string)
 	filterInput := tview.NewInputField()
 	filterInput.
@@ -324,7 +324,11 @@ func createApp(doc Document) *tview.Application {
 		SetFieldTextColor(tcell.ColorDefault).
 		SetChangedFunc(func(text string) {
 			errorView.Clear()
-			ch <- doc.WithFilter(text)
+			mutex.Lock()
+			defer mutex.Unlock()
+			doc = doc.WithFilter(text)
+			pending = true
+			cond.Signal()
 		}).
 		SetDoneFunc(func(key tcell.Key) {
 			switch key {
@@ -363,8 +367,8 @@ func createApp(doc Document) *tview.Application {
 				prefix := text[0:pos]
 
 				mutex.Lock()
-				defer mutex.Unlock()
 				candidates, ok := filterMap[prefix]
+				mutex.Unlock()
 				if ok {
 					cur := text[pos+1:]
 					var entries []string
@@ -438,33 +442,26 @@ func createApp(doc Document) *tview.Application {
 	})
 
 	go func() {
-		ready := true
 		for {
-			select {
-			case d := <-ch:
-				if !ready {
-					break
+			mutex.Lock()
+			for !pending {
+				cond.Wait()
+			}
+
+			d := doc
+			pending = false
+			mutex.Unlock()
+
+			_, err := d.WriteTo(outputView)
+			if err != nil {
+				filterInput.SetFieldTextColor(tcell.ColorMaroon)
+				exitErr, ok := err.(*exec.ExitError)
+				if ok {
+					fmt.Fprint(tview.ANSIWriter(errorView), string(exitErr.Stderr))
 				}
-
-				ready = false
-
-				go func() {
-					_, err := d.WriteTo(outputView)
-					if err != nil {
-						filterInput.SetFieldTextColor(tcell.ColorMaroon)
-						exitErr, ok := err.(*exec.ExitError)
-						if ok {
-							fmt.Fprint(tview.ANSIWriter(errorView), string(exitErr.Stderr))
-						}
-					} else {
-						outputLineCount = strings.Count(outputView.GetText(false), "\n")
-						filterInput.SetFieldTextColor(tcell.ColorDefault)
-					}
-
-					done <- 0
-				}()
-			case <-done:
-				ready = true
+			} else {
+				outputLineCount = strings.Count(outputView.GetText(false), "\n")
+				filterInput.SetFieldTextColor(tcell.ColorDefault)
 			}
 		}
 	}()
