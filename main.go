@@ -121,45 +121,52 @@ func (d *Document) ReadFrom(r io.Reader) (n int64, err error) {
 
 func (d Document) WriteTo(w io.Writer) (n int64, err error) {
 	opts := d.options
-	if _, ok := w.(*tview.TextView); ok {
-		// Writer is a TextView, so set options accordingly
+	if p, ok := w.(*pane); ok {
+		// Writer is a pane, so set options accordingly
 		opts.forceColor = true
 		opts.monochrome = false
 		opts.compact = false
 		opts.rawOutput = false
+		w = tview.ANSIWriter(p)
 	}
 
 	args := append(opts.ToSlice(), d.filter)
-	cmd := exec.Command(d.options.command, args...)
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return 0, err
+	cmd := exec.CommandContext(d.ctx, d.options.command, args...)
+
+	var b bytes.Buffer
+	cmd.Stdin = strings.NewReader(d.input)
+	cmd.Stdout = w
+	cmd.Stderr = &b
+
+	err = cmd.Run()
+
+	if p, ok := w.(*pane); ok {
+		// Mark the pane as dirty
+		p.dirty = true
 	}
 
-	go func() {
-		defer stdin.Close()
-		_, _ = io.WriteString(stdin, d.input)
-	}()
-
-	out, err := cmd.CombinedOutput()
 	if err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
-			// jq prints its error message to standard out, but we
-			// will deliver it in the Stderr field as this will
-			// most likely be an exec.ExitError.
-			exiterr.Stderr = out
+			exiterr.Stderr = b.Bytes()
 		}
 		return 0, err
 	}
 
-	if tv, ok := w.(*tview.TextView); ok {
-		w = tview.ANSIWriter(tv)
-		tv.Clear()
+	return 0, nil
+}
+
+type pane struct {
+	tv    *tview.TextView
+	dirty bool
+}
+
+func (pane *pane) Write(p []byte) (n int, err error) {
+	if pane.dirty {
+		pane.tv.Clear()
+		pane.dirty = false
 	}
 
-	m, err := w.Write(out)
-	n = int64(m)
-	return n, err
+	return pane.tv.Write(p)
 }
 
 func parseArgs() (Options, string, []string) {
@@ -297,13 +304,11 @@ func createApp(doc Document) *tview.Application {
 
 	inputView := tview.NewTextView()
 	inputView.SetDynamicColors(true).SetWrap(false).SetBorder(true)
+	inputPane := pane{tv: inputView, dirty: true}
 
 	outputView := tview.NewTextView()
 	outputView.SetDynamicColors(true).SetWrap(false).SetBorder(true)
-	outputView.SetChangedFunc(func() {
-		outputView.ScrollToBeginning()
-		app.Draw()
-	})
+	outputPane := pane{tv: outputView, dirty: true}
 
 	errorView := tview.NewTextView()
 	errorView.SetDynamicColors(true).SetTitle("Error").SetBorder(true)
@@ -321,7 +326,9 @@ func createApp(doc Document) *tview.Application {
 		cancel context.CancelFunc
 	)
 	cond := sync.NewCond(&mutex)
-	pending := false
+
+	// Initialize pending to true so that the output pane will update with the initial filter
+	pending := true
 
 	filterMap := make(map[string][]string)
 	filterInput := tview.NewInputField()
@@ -443,19 +450,15 @@ func createApp(doc Document) *tview.Application {
 		SetBorder(true)
 
 	// Generate formatted input and output with original filter
-	go app.QueueUpdateDraw(func() {
-		if _, err := doc.WithFilter(".").WriteTo(inputView); err != nil {
-			log.Fatalln(err)
-		}
+	outputView.ScrollToBeginning()
 
-		outputView.ScrollToBeginning()
-		if _, err := doc.WriteTo(outputView); err != nil {
-			filterInput.SetFieldTextColor(tcell.ColorMaroon)
+	// Process document with empty filter to populate input view
+	go func() {
+		_, err := doc.WithFilter(".").WriteTo(&inputPane)
+		if err != nil {
+			log.Fatalf("Error while running jq on input: %s\n", err)
 		}
-
-		inputLineCount = strings.Count(inputView.GetText(false), "\n")
-		outputLineCount = strings.Count(outputView.GetText(false), "\n")
-	})
+	}()
 
 	// Create a cancellable context when writing to the output view. If the
 	// filter input changes, the context is cancelled and the process is
@@ -476,7 +479,8 @@ func createApp(doc Document) *tview.Application {
 			// Re-initialize the cancellable context
 			d.ctx, cancel = context.WithCancel(context.Background())
 
-			_, err := d.WriteTo(outputView)
+			outputPane.dirty = true
+			_, err := d.WriteTo(&outputPane)
 			if err != nil {
 				if exitErr, ok := err.(*exec.ExitError); ok {
 					if code := exitErr.ExitCode(); code != -1 {
