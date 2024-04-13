@@ -317,11 +317,6 @@ func createApp(doc Document) *tview.Application {
 	filterHistory.Init(doc.options.historyFile)
 
 	var (
-		inputLineCount  int
-		outputLineCount int
-	)
-
-	var (
 		mutex  sync.Mutex
 		cancel context.CancelFunc
 	)
@@ -449,8 +444,13 @@ func createApp(doc Document) *tview.Application {
 		SetTitle("Filter").
 		SetBorder(true)
 
-	// Generate formatted input and output with original filter
-	outputView.ScrollToBeginning()
+	// Initialize the initial line counts to some large number. If the
+	// input is small, this will be updated to the correct value before it
+	// is ever displayed in the UI. But for large inputs (which will take
+	// longer to calculate the correct value), this is a better initial
+	// guess.
+	inputLineCount := 10000
+	outputLineCount := 10000
 
 	// Process document with empty filter to populate input view
 	go func() {
@@ -458,6 +458,8 @@ func createApp(doc Document) *tview.Application {
 		if err != nil {
 			log.Fatalf("Error while running jq on input: %s\n", err)
 		}
+
+		inputLineCount = strings.Count(inputView.GetText(false), "\n")
 	}()
 
 	// Create a cancellable context when writing to the output view. If the
@@ -620,9 +622,6 @@ func createApp(doc Document) *tview.Application {
 
 		return event
 	})
-
-	inputLineCount = strings.Count(inputView.GetText(false), "\n")
-	outputLineCount = strings.Count(outputView.GetText(false), "\n")
 
 	app.SetBeforeDrawFunc(func(screen tcell.Screen) bool {
 		// Start a synchronized update
