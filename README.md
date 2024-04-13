@@ -92,8 +92,8 @@ Use `Ctrl-C` to exit `ijq` immediately, discarding all filters and state.
 You can configure the colors by setting the `JQ_COLORS` environment variable.
 See the [jq documentation][colors] for more details.
 
-[jq]: https://stedolan.github.io/jq/
-[colors]: https://stedolan.github.io/jq/manual/#Colors
+[jq]: https://jqlang.github.io/jq/
+[colors]: https://jqlang.github.io/jq/manual/#colors
 [xdg]: https://github.com/kyoh86/xdg#xdg-base-directory
 
 Contributing
