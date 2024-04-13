@@ -20,6 +20,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -104,10 +105,11 @@ type Document struct {
 	input   string
 	filter  string
 	options Options
+	ctx     context.Context
 }
 
 func (d Document) WithFilter(filter string) Document {
-	return Document{input: d.input, filter: filter, options: d.options}
+	return Document{input: d.input, filter: filter, options: d.options, ctx: context.Background()}
 }
 
 func (d *Document) ReadFrom(r io.Reader) (n int64, err error) {
@@ -309,10 +311,15 @@ func createApp(doc Document) *tview.Application {
 	var filterHistory history
 	filterHistory.Init(doc.options.historyFile)
 
-	var inputLineCount int
-	var outputLineCount int
+	var (
+		inputLineCount  int
+		outputLineCount int
+	)
 
-	var mutex sync.Mutex
+	var (
+		mutex  sync.Mutex
+		cancel context.CancelFunc
+	)
 	cond := sync.NewCond(&mutex)
 	pending := false
 
@@ -324,8 +331,17 @@ func createApp(doc Document) *tview.Application {
 		SetFieldTextColor(tcell.ColorDefault).
 		SetChangedFunc(func(text string) {
 			errorView.Clear()
+			filterInput.SetFieldTextColor(tcell.ColorDefault)
+
+			if text == doc.filter {
+				return
+			}
+
+			cancel()
+
 			mutex.Lock()
 			defer mutex.Unlock()
+
 			doc = doc.WithFilter(text)
 			pending = true
 			cond.Signal()
@@ -441,6 +457,11 @@ func createApp(doc Document) *tview.Application {
 		outputLineCount = strings.Count(outputView.GetText(false), "\n")
 	})
 
+	// Create a cancellable context when writing to the output view. If the
+	// filter input changes, the context is cancelled and the process is
+	// killed.
+	doc.ctx, cancel = context.WithCancel(context.Background())
+
 	go func() {
 		for {
 			mutex.Lock()
@@ -452,17 +473,24 @@ func createApp(doc Document) *tview.Application {
 			pending = false
 			mutex.Unlock()
 
+			// Re-initialize the cancellable context
+			d.ctx, cancel = context.WithCancel(context.Background())
+
 			_, err := d.WriteTo(outputView)
 			if err != nil {
-				filterInput.SetFieldTextColor(tcell.ColorMaroon)
-				exitErr, ok := err.(*exec.ExitError)
-				if ok {
-					fmt.Fprint(tview.ANSIWriter(errorView), string(exitErr.Stderr))
+				if exitErr, ok := err.(*exec.ExitError); ok {
+					if code := exitErr.ExitCode(); code != -1 {
+						app.QueueUpdate(func() {
+							filterInput.SetFieldTextColor(tcell.ColorMaroon)
+							fmt.Fprint(tview.ANSIWriter(errorView), string(exitErr.Stderr))
+						})
+					}
 				}
 			} else {
 				outputLineCount = strings.Count(outputView.GetText(false), "\n")
-				filterInput.SetFieldTextColor(tcell.ColorDefault)
 			}
+
+			app.Draw()
 		}
 	}()
 
