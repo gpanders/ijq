@@ -1,4 +1,4 @@
 #!/bin/sh
 # Ignore all flags specified, and just cat with non-zero exit code.
-cat
+cat >&2
 exit 1

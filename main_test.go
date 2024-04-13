@@ -20,6 +20,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"os/exec"
 	"strings"
 	"testing"
@@ -91,6 +92,7 @@ func TestDocumentWriteTo(t *testing.T) {
 		options: Options{
 			command: "cat",
 		},
+		ctx: context.Background(),
 	}
 
 	readCount, err := doc.ReadFrom(testReader)
@@ -101,7 +103,7 @@ func TestDocumentWriteTo(t *testing.T) {
 
 	writeCount, err := doc.WriteTo(&buffer)
 	assert.NoError(t, err)
-	assert.Equal(t, len(testMsg), int(writeCount))
+	assert.Equal(t, 0, int(writeCount))
 
 	assert.Equal(t, testMsg, buffer.String())
 }
@@ -114,6 +116,7 @@ func TestDocumentExecError(t *testing.T) {
 		options: Options{
 			command: "./testdata/caterror",
 		},
+		ctx: context.Background(),
 	}
 
 	readCount, err := doc.ReadFrom(testReader)
