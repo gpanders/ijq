@@ -621,10 +621,28 @@ func createApp(doc Document) *tview.Application {
 		return event
 	})
 
-	app.SetBeforeDrawFunc(func(_ tcell.Screen) bool {
+	inputLineCount = strings.Count(inputView.GetText(false), "\n")
+	outputLineCount = strings.Count(outputView.GetText(false), "\n")
+
+	app.SetBeforeDrawFunc(func(screen tcell.Screen) bool {
+		// Start a synchronized update
+		tty, ok := screen.Tty()
+		if ok {
+			tty.Write([]byte("\x1b[?2026h"))
+		}
+
 		updateScrollIndicator("Input", inputLineCount, inputView)
 		updateScrollIndicator("Output", outputLineCount, outputView)
+
 		return false
+	})
+
+	app.SetAfterDrawFunc(func(screen tcell.Screen) {
+		// Finish a synchronized update
+		tty, ok := screen.Tty()
+		if ok {
+			tty.Write([]byte("\x1b[?2026l"))
+		}
 	})
 
 	app.SetRoot(grid, true).EnableMouse(true).SetFocus(grid)
