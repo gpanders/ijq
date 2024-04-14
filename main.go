@@ -128,6 +128,10 @@ func (d Document) WriteTo(w io.Writer) (n int64, err error) {
 		opts.compact = false
 		opts.rawOutput = false
 		w = tview.ANSIWriter(p)
+
+		// Mark the pane as dirty so the text view is cleared before
+		// new output is written.
+		p.dirty = true
 	}
 
 	args := append(opts.ToSlice(), d.filter)
@@ -139,11 +143,6 @@ func (d Document) WriteTo(w io.Writer) (n int64, err error) {
 	cmd.Stderr = &b
 
 	err = cmd.Run()
-
-	if p, ok := w.(*pane); ok {
-		// Mark the pane as dirty
-		p.dirty = true
-	}
 
 	if err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
@@ -304,11 +303,11 @@ func createApp(doc Document) *tview.Application {
 
 	inputView := tview.NewTextView()
 	inputView.SetDynamicColors(true).SetWrap(false).SetBorder(true)
-	inputPane := pane{tv: inputView, dirty: true}
+	inputPane := pane{tv: inputView}
 
 	outputView := tview.NewTextView()
 	outputView.SetDynamicColors(true).SetWrap(false).SetBorder(true)
-	outputPane := pane{tv: outputView, dirty: true}
+	outputPane := pane{tv: outputView}
 
 	errorView := tview.NewTextView()
 	errorView.SetDynamicColors(true).SetTitle("Error").SetBorder(true)
@@ -481,7 +480,6 @@ func createApp(doc Document) *tview.Application {
 			// Re-initialize the cancellable context
 			d.ctx, cancel = context.WithCancel(context.Background())
 
-			outputPane.dirty = true
 			_, err := d.WriteTo(&outputPane)
 			if err != nil {
 				if exitErr, ok := err.(*exec.ExitError); ok {
