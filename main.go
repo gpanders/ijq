@@ -382,9 +382,10 @@ func createApp(doc Document) *tview.Application {
 
 			if pos := strings.LastIndexByte(text, '.'); pos != -1 {
 				prefix := text[0:pos]
+				trimmed := strings.TrimSpace(prefix)
 
 				mutex.Lock()
-				candidates, ok := filterMap[prefix]
+				candidates, ok := filterMap[trimmed]
 				mutex.Unlock()
 				if ok {
 					cur := text[pos+1:]
@@ -402,7 +403,8 @@ func createApp(doc Document) *tview.Application {
 				go func() {
 					var filt string
 					if prefix != "" {
-						filt = prefix + "| keys"
+						p, _ := strings.CutSuffix(trimmed, "|")
+						filt = p + "| keys"
 					} else {
 						filt = "keys"
 					}
@@ -428,7 +430,7 @@ func createApp(doc Document) *tview.Application {
 					}
 
 					mutex.Lock()
-					filterMap[prefix] = entries
+					filterMap[trimmed] = entries
 					mutex.Unlock()
 
 					filterInput.Autocomplete()
