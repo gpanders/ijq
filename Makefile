@@ -1,4 +1,10 @@
 prefix = /usr/local
+
+# Support upper case PREFIX
+ifneq ($(PREFIX),)
+	prefix := $(PREFIX)
+endif
+
 bindir = $(prefix)/bin
 mandir = $(prefix)/share/man
 
