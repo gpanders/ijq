@@ -107,10 +107,11 @@ sourcehut account by sending a [plain text email](useplaintext.email) to
 [~gpanders/ijq@todo.sr.ht](mailto://~gpanders/ijq@todo.sr.ht).
 
 Send patches to [~gpanders/ijq@lists.sr.ht][list] or open a pull request on
-[GitHub][github].
+[GitHub][github] or [Codeberg][codeberg].
 
 [list]: https://lists.sr.ht/~gpanders/ijq
 [github]: https://github.com/gpanders/ijq
+[codeberg]: https://codeberg.org/gpanders/ijq
 [tickets]: https://todo.sr.ht/~gpanders/ijq
 
 Similar Work
