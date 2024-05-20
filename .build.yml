@@ -8,7 +8,7 @@ packages:
     - scdoc
     - hut
 secrets:
-    - 78f39fb6-1185-492f-9c21-f755e10b5e5d # ssh key for mirroring
+    - deca56bc-45c7-46a3-b258-47d0809bf65d # ssh key for mirroring
 sources:
     - https://git.sr.ht/~gpanders/ijq
 environment:
@@ -28,6 +28,7 @@ tasks:
         [ "$BUILD_SUBMITTER" = 'git.sr.ht' ] || complete-build
     - mirror: |
         git push --force --mirror git@github.com:gpanders/ijq
+        git push --force --mirror git@codeberg.org:gpanders/ijq
     - build: |
         tag=$(git describe --exact-match 2>/dev/null || true)
         if [ -z "$tag" ]; then
