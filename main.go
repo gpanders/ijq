@@ -315,7 +315,7 @@ func createApp(doc Document) *tview.Application {
 	outputPane := pane{tv: outputView}
 
 	errorView := tview.NewTextView()
-	errorView.SetDynamicColors(true).SetTitle("Error").SetBorder(true)
+	errorView.SetDynamicColors(false).SetTitle("Error").SetBorder(true)
 
 	var filterHistory history
 	filterHistory.Init(doc.options.historyFile)
