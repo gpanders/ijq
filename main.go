@@ -28,6 +28,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"regexp"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -38,13 +39,17 @@ import (
 	"golang.org/x/term"
 )
 
-const DefaultCommand string = "jq"
+const defaultCommand string = "jq"
 
 // Special characters that, if present in a JSON key, need to be quoted in the
 // jq filter
-const SpecialChars string = ".-:$/"
+const specialChars string = ".-:$/"
 
-const Alphabet string = "abcdefghijklmnopqrstuvwxyz"
+// Regular expression used to escape style/region tags. Modified from tview so
+// that it does not attempt to escape plain numbers
+var nonEscapePattern = regexp.MustCompile(`(\[[a-zA-Z_,;: \-\."#]+\[*)\]`)
+
+const alphabet string = "abcdefghijklmnopqrstuvwxyz"
 
 var Version string
 
@@ -189,7 +194,7 @@ func parseArgs() (Options, string, []string) {
 	flag.StringVar(
 		&options.command,
 		"jqbin",
-		DefaultCommand,
+		defaultCommand,
 		"name of or path to jq binary to use",
 	)
 
@@ -375,7 +380,7 @@ func createApp(doc Document) *tview.Application {
 			if text == "" {
 				var entries []string
 				for _, item := range filterHistory.Items {
-					entries = append(entries, tview.Escape(item))
+					entries = append(entries, nonEscapePattern.ReplaceAllString(item, "$1[]"))
 				}
 				return entries
 			}
@@ -423,7 +428,7 @@ func createApp(doc Document) *tview.Application {
 					entries := keys[:0]
 					for _, k := range keys {
 						first := strings.ToLower(string(k[0]))
-						if strings.ContainsAny(k, SpecialChars) || !strings.Contains(Alphabet, first) {
+						if strings.ContainsAny(k, specialChars) || !strings.Contains(alphabet, first) {
 							k = `"` + k + `"`
 						}
 						entries = append(entries, prefix+"."+k)
@@ -470,14 +475,14 @@ func createApp(doc Document) *tview.Application {
 
 	go func() {
 		for {
-			mutex.Lock()
+			cond.L.Lock()
 			for !pending {
 				cond.Wait()
 			}
 
 			d := doc
 			pending = false
-			mutex.Unlock()
+			cond.L.Unlock()
 
 			// Re-initialize the cancellable context
 			d.ctx, cancel = context.WithCancel(context.Background())
