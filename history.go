@@ -23,7 +23,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,7 +36,7 @@ type history struct {
 func (h *history) Init(path string) error {
 	h.path = path
 
-	filebytes, err := ioutil.ReadFile(path)
+	filebytes, err := os.ReadFile(path)
 	if err != nil {
 		// If the history file doesn't exist, then
 		// return an empty history.
