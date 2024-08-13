@@ -551,6 +551,14 @@ func createApp(doc Document) *tview.Application {
 				scrollHalfPage(tv, false)
 				return nil
 			}
+		case tcell.KeyCtrlF:
+			if filterInput.HasFocus() {
+				return tcell.NewEventKey(tcell.KeyRight, ' ', tcell.ModNone)
+			}
+		case tcell.KeyCtrlB:
+			if filterInput.HasFocus() {
+				return tcell.NewEventKey(tcell.KeyLeft, ' ', tcell.ModNone)
+			}
 		case tcell.KeyUp:
 			if shift && filterInput.HasFocus() {
 				app.SetFocus(inputView)
