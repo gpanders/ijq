@@ -114,6 +114,11 @@ Send patches to [~gpanders/ijq@lists.sr.ht][list] or open a pull request on
 [codeberg]: https://codeberg.org/gpanders/ijq
 [tickets]: https://todo.sr.ht/~gpanders/ijq
 
+Note for Packagers
+------------------
+
+Release announcements are published to the [mailing list][list].
+
 Similar Work
 ------------
 
