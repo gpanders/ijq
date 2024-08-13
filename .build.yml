@@ -44,6 +44,11 @@ tasks:
             arch="$2"
             make GOOS="$os" GOARCH="$arch" clean all
             cp ijq ijq.1 COPYING ijq-"$version"/
+
+            if [ "$os" = windows ]; then
+                mv ijq-"$version"/ijq{,.exe}
+            fi
+
             tar czf ijq-"$version"-"$os"-"$arch".tar.gz ijq-"$version"
             hut git artifact upload --rev "$tag" ijq-"$version"-"$os"-"$arch".tar.gz
         }
@@ -51,3 +56,4 @@ tasks:
         build darwin amd64
         build darwin arm64
         build linux amd64
+        build windows amd64
