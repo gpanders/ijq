@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/gdamore/tcell/v2 v2.7.1
 	github.com/kyoh86/xdg v1.2.0
-	github.com/rivo/tview v0.0.0-20240307173318-e804876934a1
+	github.com/rivo/tview v0.0.0-20241103174730-c76f7879f592
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/term v0.17.0
 )

@@ -28,7 +28,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"regexp"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -44,10 +43,6 @@ const defaultCommand string = "jq"
 // Special characters that, if present in a JSON key, need to be quoted in the
 // jq filter
 const specialChars string = ".-:$/"
-
-// Regular expression used to escape style/region tags. Modified from tview so
-// that it does not attempt to escape plain numbers
-var nonEscapePattern = regexp.MustCompile(`(\[[a-zA-Z_,;: \-\."#]+\[*)\]`)
 
 const alphabet string = "abcdefghijklmnopqrstuvwxyz"
 
@@ -378,11 +373,7 @@ func createApp(doc Document) *tview.Application {
 		}).
 		SetAutocompleteFunc(func(text string) []string {
 			if text == "" {
-				var entries []string
-				for _, item := range filterHistory.Items {
-					entries = append(entries, nonEscapePattern.ReplaceAllString(item, "$1[]"))
-				}
-				return entries
+				return filterHistory.Items
 			}
 
 			if pos := strings.LastIndexByte(text, '.'); pos != -1 {
@@ -446,7 +437,8 @@ func createApp(doc Document) *tview.Application {
 
 			return nil
 		}).
-		SetAutocompleteStyles(tcell.ColorBlack, tcell.StyleDefault, tcell.StyleDefault.Reverse(true)).
+		SetAutocompleteUseTags(false).
+		SetAutocompleteStyles(tcell.ColorBlack, tcell.StyleDefault.Background(tcell.ColorBlack), tcell.StyleDefault.Reverse(true)).
 		SetTitle("Filter").
 		SetBorder(true)
 
