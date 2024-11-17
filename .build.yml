@@ -7,8 +7,6 @@ packages:
     - musl-dev
     - scdoc
     - hut
-secrets:
-    - deca56bc-45c7-46a3-b258-47d0809bf65d # ssh key for mirroring
 sources:
     - https://git.sr.ht/~gpanders/ijq
 environment:
@@ -26,9 +24,6 @@ tasks:
     - nopr: |
         # Don't run on GitHub PRs
         [ "$BUILD_SUBMITTER" = 'git.sr.ht' ] || complete-build
-    - mirror: |
-        git push --force --mirror git@github.com:gpanders/ijq
-        git push --force --mirror git@codeberg.org:gpanders/ijq
     - build: |
         tag=$(git describe --exact-match 2>/dev/null || true)
         if [ -z "$tag" ]; then
