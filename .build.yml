@@ -1,5 +1,5 @@
 image: alpine/edge
-oauth: git.sr.ht/OBJECTS:RW git.sr.ht/REPOSITORIES:RO git.sr.ht/PROFILE:RO
+oauth: git.sr.ht/OBJECTS:RW git.sr.ht/REPOSITORIES:RW git.sr.ht/PROFILE:RO
 packages:
     - git
     - go
@@ -10,7 +10,6 @@ packages:
 sources:
     - https://git.sr.ht/~gpanders/ijq
 environment:
-    REPO_ID: 23987
     GIT_SSH_COMMAND: ssh -o StrictHostKeyChecking=no
 triggers:
     - action: email
@@ -21,6 +20,8 @@ tasks:
         echo 'cd ijq' >> ~/.buildenv
     - test: |
         make test
+    - update-readme: |
+        hut git update --readme README.srht.html
     - nopr: |
         # Don't run on GitHub PRs
         [ "$BUILD_SUBMITTER" = 'git.sr.ht' ] || complete-build
