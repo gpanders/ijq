@@ -1,4 +1,4 @@
-module git.sr.ht/~gpanders/ijq
+module codeberg.org/gpanders/ijq
 
 go 1.18
 

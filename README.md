@@ -17,33 +17,16 @@ Installation
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/ijq.svg?exclude_unsupported=1)](https://repology.org/project/ijq/versions)
 
-### Download a pre-compiled release
-
-Select the version you want to download from [sourcehut] and download one of
-the pre-compiled releases from that page. Then extract the archive and copy the
-binary and, optionally, the man page to the correct location.
-
-Example:
-
-    wget https://git.sr.ht/~gpanders/ijq/refs/download/vX.Y.Z/ijq-vX.Y.Z-linux-amd64.tar.gz
-    tar xf ijq-vX.Y.Z-linux-amd64.tar.gz
-    cd ijq-vX.Y.Z
-    cp ijq /usr/local/bin
-    mkdir -p /usr/local/share/man/man1
-    cp ijq.1 /usr/local/share/man/man1
-
-[sourcehut]: https://git.sr.ht/~gpanders/ijq/refs
-
 ### Build from source
 
 Install [go]. To install `ijq` under `/usr/local/bin/` simply run
 
     make install
 
-from the root of the project. To install to another location, set the `prefix`
+from the root of the project. To install to another location, set the `PREFIX`
 variable, e.g.
 
-    make prefix=~/.local install
+    make PREFIX=~/.local install
 
 To generate the man page you will also need to have [scdoc] installed.
 
@@ -99,25 +82,19 @@ See the [jq documentation][colors] for more details.
 Contributing
 ------------
 
-Have a question, comment, or feature request? Send an email to the [mailing
-list][list].
-
-Report bugs on the [ticket tracker][tickets]. You can file a ticket without a
-sourcehut account by sending a [plain text email](useplaintext.email) to
-[~gpanders/ijq@todo.sr.ht](mailto://~gpanders/ijq@todo.sr.ht).
-
-Send patches to [~gpanders/ijq@lists.sr.ht][list] or open a pull request on
+Bugs can be reported on the [issue tracker][issues]. PRs are accepted on
 [GitHub][github] or [Codeberg][codeberg].
 
-[list]: https://lists.sr.ht/~gpanders/ijq
+[issues]: https://https://codeberg.org/gpanders/ijq/issues
 [github]: https://github.com/gpanders/ijq
 [codeberg]: https://codeberg.org/gpanders/ijq
-[tickets]: https://todo.sr.ht/~gpanders/ijq
 
 Note for Packagers
 ------------------
 
-Release announcements are published to the [mailing list][list].
+Subscribe to release announcements on [Codeberg][codeberg] to be notified of
+new releases, or subscribe to the [RSS
+feed](https://codeberg.org/gpanders/ijq/releases.rss).
 
 Similar Work
 ------------

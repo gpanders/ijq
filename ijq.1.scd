@@ -133,13 +133,6 @@ See https://asciinema.org/a/496932 for a demo.
 
 jq(1)
 
-# BUGS AND CONTRIBUTING
-
-Report bugs to https://todo.sr.ht/~gpanders/ijq (or send an email to
-~gpanders/ijq@todo.sr.ht).
-
-Patches can be sent to ~gpanders/ijq@lists.sr.ht.
-
 # AUTHOR
 
 Gregory Anders <greg@gpanders.com>
