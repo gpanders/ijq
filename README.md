@@ -85,7 +85,7 @@ Contributing
 Bugs can be reported on the [issue tracker][issues]. PRs are accepted on
 [GitHub][github] or [Codeberg][codeberg].
 
-[issues]: https://https://codeberg.org/gpanders/ijq/issues
+[issues]: https://codeberg.org/gpanders/ijq/issues
 [github]: https://github.com/gpanders/ijq
 [codeberg]: https://codeberg.org/gpanders/ijq
 
