@@ -49,16 +49,17 @@ const alphabet string = "abcdefghijklmnopqrstuvwxyz"
 var Version string
 
 type Options struct {
-	compact     bool
-	command     string
-	nullInput   bool
-	slurp       bool
-	rawOutput   bool
-	rawInput    bool
-	monochrome  bool
-	sortKeys    bool
-	historyFile string
-	forceColor  bool
+	compact       bool
+	command       string
+	nullInput     bool
+	slurp         bool
+	rawOutput     bool
+	rawInput      bool
+	monochrome    bool
+	sortKeys      bool
+	historyFile   string
+	forceColor    bool
+	hideInputPane bool
 }
 
 // Convert the Options struct to a string slice of option flags that gets
@@ -185,6 +186,7 @@ func parseArgs() (Options, string, []string) {
 	flag.BoolVar(&options.forceColor, "C", false, "force colorized JSON, even if writing to a pipe or file")
 	flag.BoolVar(&options.monochrome, "M", false, "monochrome (don't colorize JSON)")
 	flag.BoolVar(&options.sortKeys, "S", false, "sort keys of objects on output")
+	flag.BoolVar(&options.hideInputPane, "O", false, "hide input (left) viewing pane")
 
 	flag.StringVar(
 		&options.command,
@@ -304,7 +306,7 @@ func createApp(doc Document) *tview.Application {
 	inputView := tview.NewTextView()
 	inputView.SetDynamicColors(true).SetWrap(false).SetBorder(true)
 	inputPane := pane{tv: inputView}
-	isInputPaneHidden := false
+	isInputPaneHidden := doc.options.hideInputPane
 
 	outputView := tview.NewTextView()
 	outputView.SetDynamicColors(true).SetWrap(false).SetBorder(true)
@@ -498,8 +500,12 @@ func createApp(doc Document) *tview.Application {
 		}
 	}()
 
+	inputPaneProportion := 1
+	if isInputPaneHidden {
+		inputPaneProportion = 0
+	}
 	viewFlex := tview.NewFlex().
-		AddItem(inputView, 0, 1, false).
+		AddItem(inputView, 0, inputPaneProportion, false).
 		AddItem(outputView, 0, 1, false)
 	grid := tview.NewGrid().
 		SetRows(0, 3, 4).

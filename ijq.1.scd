@@ -61,6 +61,13 @@ All of the options mirror their counterparts in *jq*. The options are:
 	Specify the path to store history. If set to '' (-H ''), then history
 	will not be captured.
 
+*ijq* has some options that influence its starting layout. They are designed to
+avoid conflicts with *jq*. If *jq* adds in the future adds an option that
+conflicts with one of these, they might change here.
+
+*-O*
+	Hides the input (left) viewing pane, which shows the original input.
+
 # KEY BINDINGS
 
 *Shift + Up*, *Shift + Left*
