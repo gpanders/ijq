@@ -1,6 +1,6 @@
 module codeberg.org/gpanders/ijq
 
-go 1.18
+go 1.20
 
 require (
 	github.com/gdamore/tcell/v2 v2.7.1
