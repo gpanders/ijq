@@ -304,6 +304,7 @@ func createApp(doc Document) *tview.Application {
 	inputView := tview.NewTextView()
 	inputView.SetDynamicColors(true).SetWrap(false).SetBorder(true)
 	inputPane := pane{tv: inputView}
+	isInputPaneHidden := false
 
 	outputView := tview.NewTextView()
 	outputView.SetDynamicColors(true).SetWrap(false).SetBorder(true)
@@ -497,12 +498,13 @@ func createApp(doc Document) *tview.Application {
 		}
 	}()
 
+	viewFlex := tview.NewFlex().
+		AddItem(inputView, 0, 1, false).
+		AddItem(outputView, 0, 1, false)
 	grid := tview.NewGrid().
 		SetRows(0, 3, 4).
 		SetColumns(0).
-		AddItem(tview.NewFlex().
-			AddItem(inputView, 0, 1, false).
-			AddItem(outputView, 0, 1, false), 0, 0, 1, 1, 0, 0, false).
+		AddItem(viewFlex, 0, 0, 1, 1, 0, 0, false).
 		AddItem(tview.NewFlex().
 			AddItem(tview.NewBox(), 0, 1, false).
 			AddItem(filterInput, 0, 4, true).
@@ -553,11 +555,15 @@ func createApp(doc Document) *tview.Application {
 			}
 		case tcell.KeyUp:
 			if shift && filterInput.HasFocus() {
-				app.SetFocus(inputView)
+				if !isInputPaneHidden {
+					app.SetFocus(inputView)
+				} else {
+					app.SetFocus(outputView)
+				}
 				return nil
 			}
 		case tcell.KeyLeft:
-			if shift {
+			if shift && !isInputPaneHidden {
 				app.SetFocus(inputView)
 				return nil
 			}
@@ -590,6 +596,19 @@ func createApp(doc Document) *tview.Application {
 				return nil
 			} else if filterInput.HasFocus() {
 				return tcell.NewEventKey(tcell.KeyUp, ' ', tcell.ModNone)
+			}
+		case tcell.KeyCtrlO:
+			if !isInputPaneHidden {
+				if inputView.HasFocus() {
+					app.SetFocus(outputView)
+				}
+				viewFlex.ResizeItem(inputView, 0, 0)
+				isInputPaneHidden = true
+				return nil
+			} else {
+				viewFlex.ResizeItem(inputView, 0, 1)
+				isInputPaneHidden = false
+				return nil
 			}
 		}
 

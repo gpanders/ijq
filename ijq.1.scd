@@ -108,6 +108,9 @@ All of the options mirror their counterparts in *jq*. The options are:
 	cursor to the beginning of the field. When one of the viewing panes has
 	focus, scroll up one half page.
 
+*Ctrl-O*
+	Toggle visibility of the input (left) viewing pane.
+
 *u*, *d*, *f*, *b*
 	When one of the viewing panes has focus, scroll a half/full page
 	up/down.
