@@ -186,7 +186,7 @@ func parseArgs() (Options, string, []string) {
 	flag.BoolVar(&options.forceColor, "C", false, "force colorized JSON, even if writing to a pipe or file")
 	flag.BoolVar(&options.monochrome, "M", false, "monochrome (don't colorize JSON)")
 	flag.BoolVar(&options.sortKeys, "S", false, "sort keys of objects on output")
-	flag.BoolVar(&options.hideInputPane, "O", false, "hide input (left) viewing pane")
+	flag.BoolVar(&options.hideInputPane, "hide-input-pane", false, "hide input (left) viewing pane")
 
 	flag.StringVar(
 		&options.command,

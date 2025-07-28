@@ -65,7 +65,7 @@ All of the options mirror their counterparts in *jq*. The options are:
 avoid conflicts with *jq*. If *jq* adds in the future adds an option that
 conflicts with one of these, they might change here.
 
-*-O*
+*-hide-input-pane*
 	Hides the input (left) viewing pane, which shows the original input.
 
 # KEY BINDINGS
