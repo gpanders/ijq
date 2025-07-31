@@ -57,13 +57,13 @@ All of the options mirror their counterparts in *jq*. The options are:
 	Read the filter from _file_. When this option is used, all positional
 	arguments (if any) are interpreted as input files.
 
+*ijq* has some options that influence its configuration and starting layout.
+They are designed to avoid conflicts with *jq*. If *jq* adds in the future
+adds an option that conflicts with one of these, they might change here.
+
 *-H* _file_
 	Specify the path to store history. If set to '' (-H ''), then history
 	will not be captured.
-
-*ijq* has some options that influence its starting layout. They are designed to
-avoid conflicts with *jq*. If *jq* adds in the future adds an option that
-conflicts with one of these, they might change here.
 
 *-hide-input-pane*
 	Hides the input (left) viewing pane, which shows the original input.
