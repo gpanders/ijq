@@ -133,6 +133,14 @@ func (d Document) WriteTo(w io.Writer) (n int64, err error) {
 		// Mark the pane as dirty so the text view is cleared before
 		// new output is written.
 		p.dirty = true
+		defer func() {
+			if p.dirty && err == nil {
+				// If there was no error and the pane is still marked as dirty that
+				// means jq didn't emit any output, so we need to clear the pane
+				// manually
+				p.tv.Clear()
+			}
+		}()
 	}
 
 	args := append(opts.ToSlice(), d.filter)
@@ -143,9 +151,7 @@ func (d Document) WriteTo(w io.Writer) (n int64, err error) {
 	cmd.Stdout = w
 	cmd.Stderr = &b
 
-	err = cmd.Run()
-
-	if err != nil {
+	if err := cmd.Run(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			exiterr.Stderr = b.Bytes()
 		}
