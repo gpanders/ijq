@@ -10,7 +10,7 @@ mandir = $(prefix)/share/man
 
 SRCS = main.go history.go
 
-VERSION = 1.1.2
+VERSION = 1.2.0
 
 .PHONY: all
 all: ijq docs
