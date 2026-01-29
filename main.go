@@ -48,21 +48,37 @@ const alphabet string = "abcdefghijklmnopqrstuvwxyz"
 
 var Version string
 
+type LibraryPaths []string
+
+var _ flag.Value = &LibraryPaths{}
+
+func (v *LibraryPaths) String() string {
+	return strings.Join(*v, ",")
+}
+
+func (v *LibraryPaths) Set(value string) error {
+	*v = append(*v, value)
+	return nil
+}
+
 type Options struct {
 	compact       bool
 	command       string
 	nullInput     bool
 	slurp         bool
 	rawOutput     bool
+	joinOutput    bool
+	asciiOutput   bool
 	rawInput      bool
 	monochrome    bool
 	sortKeys      bool
 	historyFile   string
 	forceColor    bool
 	hideInputPane bool
+	libraryPaths  LibraryPaths
 }
 
-// Convert the Options struct to a string slice of option flags that gets
+// ToSlice converts the Options struct to a string slice of option flags that gets
 // passed to jq.
 func (o *Options) ToSlice() []string {
 	opts := []string{}
@@ -83,6 +99,14 @@ func (o *Options) ToSlice() []string {
 		opts = append(opts, "-r")
 	}
 
+	if o.joinOutput {
+		opts = append(opts, "-j")
+	}
+
+	if o.asciiOutput {
+		opts = append(opts, "-a")
+	}
+
 	if o.rawInput {
 		opts = append(opts, "-R")
 	}
@@ -97,6 +121,10 @@ func (o *Options) ToSlice() []string {
 
 	if o.sortKeys {
 		opts = append(opts, "-S")
+	}
+
+	for _, path := range o.libraryPaths {
+		opts = append(opts, "-L", path)
 	}
 
 	return opts
@@ -186,12 +214,15 @@ func parseArgs() (Options, string, []string) {
 	options := Options{}
 	flag.BoolVar(&options.compact, "c", false, "compact instead of pretty-printed output")
 	flag.BoolVar(&options.nullInput, "n", false, "use ```null` as the single input value")
-	flag.BoolVar(&options.slurp, "s", false, "read (slurp) all inputs into an array; apply filter to it")
-	flag.BoolVar(&options.rawOutput, "r", false, "output raw strings, not JSON texts")
-	flag.BoolVar(&options.rawInput, "R", false, "read raw strings, not JSON texts")
-	flag.BoolVar(&options.forceColor, "C", false, "force colorized JSON, even if writing to a pipe or file")
-	flag.BoolVar(&options.monochrome, "M", false, "monochrome (don't colorize JSON)")
-	flag.BoolVar(&options.sortKeys, "S", false, "sort keys of objects on output")
+	flag.BoolVar(&options.slurp, "s", false, "read all inputs into an array and use it as the single input value")
+	flag.BoolVar(&options.rawOutput, "r", false, "output strings without escapes and quotes")
+	flag.BoolVar(&options.joinOutput, "j", false, "implies -r and output without newline after each output")
+	flag.BoolVar(&options.asciiOutput, "a", false, "output strings by oinly ASCII characters using escape sequences")
+	flag.BoolVar(&options.rawInput, "R", false, "read each line as string instead of JSON")
+	flag.BoolVar(&options.forceColor, "C", false, "colorize JSON output")
+	flag.BoolVar(&options.monochrome, "M", false, "disabled colored output")
+	flag.BoolVar(&options.sortKeys, "S", false, "sort keys of each object on output")
+	flag.Var(&options.libraryPaths, "L", "search modules from the `dir`ectory")
 	flag.BoolVar(&options.hideInputPane, "hide-input-pane", false, "hide input (left) viewing pane")
 
 	flag.StringVar(
@@ -208,7 +239,7 @@ func parseArgs() (Options, string, []string) {
 		"set path to history file. Set to '' to disable history.",
 	)
 
-	filterFile := flag.String("f", "", "read initial filter from `filename`")
+	filterFile := flag.String("f", "", "load the filter from a `file`")
 	version := flag.Bool("V", false, "print version and exit")
 
 	flag.Parse()
