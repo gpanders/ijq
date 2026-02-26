@@ -90,7 +90,9 @@ func TestDocumentWriteTo(t *testing.T) {
 	doc := &Document{
 		filter: "-",
 		options: Options{
-			command: "cat",
+			config: Config{
+				JQCommand: "cat",
+			},
 		},
 		ctx: context.Background(),
 	}
@@ -114,7 +116,9 @@ func TestDocumentExecError(t *testing.T) {
 
 	doc := &Document{
 		options: Options{
-			command: "./testdata/caterror",
+			config: Config{
+				JQCommand: "./testdata/caterror",
+			},
 		},
 		ctx: context.Background(),
 	}

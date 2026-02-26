@@ -58,11 +58,11 @@ filter for re-use with `jq` in the future:
 Pressing `Return` also saves the filter to a history file
 (`$XDG_DATA_HOME/ijq/history` by default). You can browse the history by
 deleting everything in the filter field. Change the history file used with the
-`-H` option, or specify an empty string to disable history entirely (i.e. `-H
-''`).
+`history-file` setting in `$XDG_CONFIG_HOME/ijq/config` (or
+`~/.config/ijq/config` when `$XDG_CONFIG_HOME` is unset). Set
+`history-file` to an empty string to disable history entirely.
 
-If `$XDG_DATA_HOME` is undefined, then the directory used is [platform
-dependent][xdg].
+If `$XDG_DATA_HOME` is undefined, `~/.local/share/ijq/history` is used.
 
 Use `Shift` plus the arrow keys to move between the different windows. When
 either of the input or output views have focus, you can use the arrow keys to
@@ -77,7 +77,6 @@ See the [jq documentation][colors] for more details.
 
 [jq]: https://jqlang.github.io/jq/
 [colors]: https://jqlang.github.io/jq/manual/#colors
-[xdg]: https://github.com/kyoh86/xdg#xdg-base-directory
 
 Contributing
 ------------

@@ -19,8 +19,9 @@ are finished, press Return or Ctrl-C to exit. The filtered output will be
 written to standard output and the filter itself will be written to standard
 error.
 
-*ijq* maintains a history of used filters, unless disabled with the *-H* option.
-Delete all text in the filter field to browse any available history.
+*ijq* maintains a history of used filters unless disabled via
+*history-file* in the config file. Delete all text in the filter field to
+browse any available history.
 
 If _files_ is omitted then *ijq* reads data from standard input.
 
@@ -57,18 +58,49 @@ All of the options mirror their counterparts in *jq*. The options are:
 	Read the filter from _file_. When this option is used, all positional
 	arguments (if any) are interpreted as input files.
 
-*ijq* has some options that influence its configuration and starting layout.
-They are designed to avoid conflicts with *jq*. If *jq* adds in the future
-adds an option that conflicts with one of these, they might change here.
+# CONFIG FILE
 
-*-H* _file_
-	Specify the path to store history. If set to '' (-H ''), then history
-	will not be captured.
+*ijq* reads configuration from _$XDG_CONFIG_HOME/ijq/config_. If
+_$XDG_CONFIG_HOME_ is not set, then the fallback path is
+_~/.config/ijq/config_.
 
-*-hide-input-pane*
-	Hides the input (left) viewing pane, which shows the original input.
+The file format is *scfg*. All settings are optional. If a setting is present
+both in the config file and on the command line, the command-line value takes
+precedence.
+
+*history-file* _file_
+	Path to the history file. If set to '' then history is disabled.
+
+*jq-bin* _file_
+	Name of or path to the *jq* binary to use.
+
+*hide-input-pane* _bool_
+	If true, start with the input (left) viewing pane hidden.
+
+*keymaps*
+	Section containing key bindings. Any entry not set keeps its built-in
+	default value.
+
+	Bindings are written as key names (*Ctrl+N*, *Shift+Up*, *Return*) or
+	single runes (*u*, *G*). _+_ and _-_ can both be used between modifiers
+	and key names, for example *Ctrl+N* and *Ctrl-N*.
+
+	When the filter input field has focus, printable runes are always treated
+	as text input. To bind a global command while editing the filter, use a
+	non-printable key or a modifier combination.
+
+	Available entries are: *submit-filter*, *move-down*, *move-up*,
+	*page-down*, *line-start*, *line-end*, *half-page-up*,
+	*half-page-down*, *filter-cursor-right*, *filter-cursor-left*,
+	*focus-input-pane-up*, *focus-input-pane-left*, *focus-output-pane*,
+	*focus-filter-input*, *next-focus*, *previous-focus*,
+	*toggle-input-pane*, *textview-page-up*, *textview-page-up-alt*,
+	*textview-page-down*, and *textview-end*.
 
 # KEY BINDINGS
+
+These are the default key bindings. They can be overridden in the *keymaps*
+section of the config file.
 
 *Shift + Up*, *Shift + Left*
 	Focus the input (left) viewing pane.
