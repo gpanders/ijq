@@ -44,19 +44,6 @@ const alphabet string = "abcdefghijklmnopqrstuvwxyz"
 
 var Version string
 
-type LibraryPaths []string
-
-var _ flag.Value = &LibraryPaths{}
-
-func (v *LibraryPaths) String() string {
-	return strings.Join(*v, ",")
-}
-
-func (v *LibraryPaths) Set(value string) error {
-	*v = append(*v, value)
-	return nil
-}
-
 type Options struct {
 	compact     bool
 	nullInput   bool

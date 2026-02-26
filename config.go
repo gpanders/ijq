@@ -6,12 +6,27 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"codeberg.org/emersion/go-scfg"
 )
+
+type LibraryPaths []string
+
+var _ flag.Value = &LibraryPaths{}
+
+func (v *LibraryPaths) String() string {
+	return strings.Join(*v, ",")
+}
+
+func (v *LibraryPaths) Set(value string) error {
+	*v = append(*v, value)
+	return nil
+}
 
 type Config struct {
 	HistoryFile   string       `scfg:"history-file"`
