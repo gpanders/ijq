@@ -19,7 +19,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path"
@@ -61,22 +60,13 @@ func TestHistoryAddEmptyString(t *testing.T) {
 	assert.NoFileExists(t, histfile)
 }
 
-func TestContains(t *testing.T) {
-	things := []string{"one", "two", "three"}
-
-	assert.True(t, contains(things, "one"))
-	assert.True(t, contains(things, "two"))
-	assert.True(t, contains(things, "three"))
-	assert.False(t, contains(things, "four"))
-}
-
 func TestHistoryAdd(t *testing.T) {
 	histFile := makeHistoryFilename()
 
 	before := "one\ntwo\n"
 	after := "one\ntwo\nthree\n"
 
-	err := ioutil.WriteFile(histFile, []byte(before), 0644)
+	err := os.WriteFile(histFile, []byte(before), 0644)
 	assert.NoError(t, err)
 
 	var h history
@@ -85,7 +75,7 @@ func TestHistoryAdd(t *testing.T) {
 	err = h.Add("three")
 	assert.NoError(t, err)
 
-	contents, err := ioutil.ReadFile(histFile)
+	contents, err := os.ReadFile(histFile)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte(after), contents)
 
@@ -97,7 +87,7 @@ func TestHistoryAddRepeating(t *testing.T) {
 
 	contents := "one\ntwo\n"
 
-	err := ioutil.WriteFile(histFile, []byte(contents), 0644)
+	err := os.WriteFile(histFile, []byte(contents), 0644)
 	assert.NoError(t, err)
 
 	var h history
@@ -106,7 +96,7 @@ func TestHistoryAddRepeating(t *testing.T) {
 	err = h.Add("one")
 	assert.NoError(t, err)
 
-	retrieved, err := ioutil.ReadFile(histFile)
+	retrieved, err := os.ReadFile(histFile)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte(contents), retrieved)
 
@@ -180,4 +170,58 @@ func TestHistory(t *testing.T) {
 	)
 
 	assert.NoError(t, os.Remove(histFile))
+}
+
+func TestHistoryAddIfMissingStatus(t *testing.T) {
+	histFile := makeHistoryFilename()
+	defer os.Remove(histFile)
+
+	var h history
+	err := h.Init(histFile)
+	assert.NoError(t, err)
+
+	added, err := h.AddIfMissing("foo")
+	assert.NoError(t, err)
+	assert.True(t, added)
+
+	added, err = h.AddIfMissing("foo")
+	assert.NoError(t, err)
+	assert.False(t, added)
+}
+
+func TestHistoryDeleteAt(t *testing.T) {
+	histFile := makeHistoryFilename()
+	defer os.Remove(histFile)
+
+	err := os.WriteFile(histFile, []byte("one\ntwo\nthree\n"), 0644)
+	assert.NoError(t, err)
+
+	var h history
+	err = h.Init(histFile)
+	assert.NoError(t, err)
+
+	err = h.DeleteAt(1)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"one", "three"}, h.Items)
+
+	contents, err := os.ReadFile(histFile)
+	assert.NoError(t, err)
+	assert.Equal(t, "one\nthree\n", string(contents))
+}
+
+func TestHistoryDeleteAtInvalidIndex(t *testing.T) {
+	var h history
+	h.Items = []string{"one", "two"}
+
+	assert.Error(t, h.DeleteAt(-1))
+	assert.Error(t, h.DeleteAt(2))
+}
+
+func TestHistoryEntriesReturnsCopy(t *testing.T) {
+	h := history{Items: []string{"one", "two"}}
+
+	entries := h.Entries()
+	entries[0] = "changed"
+
+	assert.Equal(t, []string{"one", "two"}, h.Items)
 }

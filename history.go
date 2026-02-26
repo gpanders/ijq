@@ -23,8 +23,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -62,32 +64,55 @@ func (h *history) Init(path string) error {
 }
 
 func (h *history) Add(expression string) error {
+	_, err := h.AddIfMissing(expression)
+	return err
+}
+
+func (h *history) AddIfMissing(expression string) (bool, error) {
 	expression = strings.TrimSpace(expression)
 	if expression == "" {
-		return nil
+		return false, nil
 	}
 
 	if h.path == "" {
-		return nil
+		return false, nil
 	}
 
 	// Don't continue with adding the expression if it is saved in history
 	// already.
-	if contains(h.Items, expression) {
-		return nil
+	if slices.Contains(h.Items, expression) {
+		return false, nil
 	}
 
 	h.Items = append(h.Items, expression)
 
 	file, err := h.openFile()
 	if err != nil {
-		return fmt.Errorf("error opening history for writing: %w", err)
+		return false, fmt.Errorf("error opening history for writing: %w", err)
 	}
 
 	fmt.Fprintln(file, expression)
 
 	if err = file.Close(); err != nil {
-		return fmt.Errorf("error closing history file: %w", err)
+		return false, fmt.Errorf("error closing history file: %w", err)
+	}
+
+	return true, nil
+}
+
+func (h *history) DeleteAt(index int) error {
+	if index < 0 || index >= len(h.Items) {
+		return fmt.Errorf("history index out of range")
+	}
+
+	h.Items = append(h.Items[:index], h.Items[index+1:]...)
+
+	if h.path == "" {
+		return nil
+	}
+
+	if err := h.rewrite(); err != nil {
+		return fmt.Errorf("error rewriting history: %w", err)
 	}
 
 	return nil
@@ -99,7 +124,7 @@ func (h *history) openFile() (*os.File, error) {
 		return nil, err
 	}
 
-	f, err := os.OpenFile(h.path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	f, err := os.OpenFile(h.path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 	if err != nil {
 		return nil, err
 	}
@@ -107,12 +132,43 @@ func (h *history) openFile() (*os.File, error) {
 	return f, nil
 }
 
-func contains(arr []string, elem string) bool {
-	for _, v := range arr {
-		if elem == v {
-			return true
+func (h *history) Entries() []string {
+	return append([]string(nil), h.Items...)
+}
+
+func (h *history) rewrite() (rerr error) {
+	if err := os.MkdirAll(filepath.Dir(h.path), os.ModePerm); err != nil {
+		return err
+	}
+
+	tmpFile, err := os.CreateTemp(filepath.Dir(h.path), ".history-*")
+	if err != nil {
+		return err
+	}
+
+	tmpName := tmpFile.Name()
+	defer func() {
+		if rerr != nil {
+			tmpFile.Close()
+			os.Remove(tmpName)
+		}
+	}()
+
+	for _, item := range h.Items {
+		if _, err := io.WriteString(tmpFile, item+"\n"); err != nil {
+			return err
 		}
 	}
 
-	return false
+	if err := tmpFile.Close(); err != nil {
+		return err
+	}
+
+	if err := os.Rename(tmpName, h.path); err != nil {
+		return err
+	}
+
+	os.Chmod(tmpName, 0o644)
+
+	return nil
 }

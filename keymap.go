@@ -32,7 +32,7 @@ func (k *KeyBinding) UnmarshalText(text []byte) error {
 
 	mods := tcell.ModNone
 	if modsPart != "" {
-		for _, modifier := range strings.Split(modsPart, "+") {
+		for modifier := range strings.SplitSeq(modsPart, "+") {
 			modifier = strings.ToLower(strings.TrimSpace(modifier))
 			switch modifier {
 			case "shift":
@@ -94,7 +94,16 @@ func (binding KeyBinding) Matches(event *tcell.EventKey) bool {
 		return false
 	}
 
-	return event.Modifiers() == binding.mods
+	if event.Modifiers() == binding.mods {
+		return true
+	}
+
+	if binding.mods == tcell.ModNone && isControlKey(binding.key) {
+		mods := event.Modifiers()
+		return mods == tcell.ModCtrl || mods == tcell.ModCtrl|tcell.ModShift
+	}
+
+	return false
 }
 
 type KeyBindings []KeyBinding
@@ -107,6 +116,82 @@ func (bindings KeyBindings) Matches(event *tcell.EventKey) bool {
 	}
 
 	return false
+}
+
+func (binding KeyBinding) String() string {
+	if binding.key == tcell.KeyCtrlUnderscore {
+		return "Ctrl-/"
+	}
+
+	if binding.key == tcell.KeyRune {
+		base := string(binding.rune)
+		if binding.rune == ' ' {
+			base = "Space"
+		}
+
+		return formatKeyLabel(binding.mods, base)
+	}
+
+	base := keyName(binding.key)
+	if strings.HasPrefix(base, "Ctrl-") || strings.HasPrefix(base, "Alt+") || strings.HasPrefix(base, "Shift+") {
+		return base
+	}
+
+	return formatKeyLabel(binding.mods, base)
+}
+
+func (bindings KeyBindings) PrimaryString() string {
+	if len(bindings) == 0 {
+		return ""
+	}
+
+	return bindings[0].String()
+}
+
+func formatKeyLabel(mods tcell.ModMask, base string) string {
+	if mods == tcell.ModNone {
+		return base
+	}
+
+	parts := make([]string, 0, 5)
+	if mods&tcell.ModCtrl != 0 {
+		parts = append(parts, "Ctrl")
+	}
+	if mods&tcell.ModAlt != 0 {
+		parts = append(parts, "Alt")
+	}
+	if mods&tcell.ModShift != 0 {
+		parts = append(parts, "Shift")
+	}
+	if mods&tcell.ModMeta != 0 {
+		parts = append(parts, "Meta")
+	}
+
+	parts = append(parts, base)
+	return strings.Join(parts, "+")
+}
+
+func keyName(key tcell.Key) string {
+	switch key {
+	case tcell.KeyEnter:
+		return "Enter"
+	case tcell.KeyEsc:
+		return "Esc"
+	case tcell.KeyTab:
+		return "Tab"
+	case tcell.KeyBacktab:
+		return "Shift-Tab"
+	case tcell.KeyPgUp:
+		return "PageUp"
+	case tcell.KeyPgDn:
+		return "PageDown"
+	}
+
+	if name, ok := tcell.KeyNames[key]; ok {
+		return name
+	}
+
+	return fmt.Sprintf("Key(%d)", key)
 }
 
 type Keymap struct {
@@ -129,11 +214,11 @@ type Keymap struct {
 	NextFocus          KeyBindings `scfg:"next-focus"`
 	PreviousFocus      KeyBindings `scfg:"previous-focus"`
 	ToggleInputPane    KeyBindings `scfg:"toggle-input-pane"`
+	ToggleMenu         KeyBindings `scfg:"toggle-menu"`
 
-	TextviewPageUp    KeyBindings `scfg:"textview-page-up"`
-	TextviewPageUpAlt KeyBindings `scfg:"textview-page-up-alt"`
-	TextviewPageDown  KeyBindings `scfg:"textview-page-down"`
-	TextviewEnd       KeyBindings `scfg:"textview-end"`
+	TextviewPageUp   KeyBindings `scfg:"textview-page-up"`
+	TextviewPageDown KeyBindings `scfg:"textview-page-down"`
+	TextviewEnd      KeyBindings `scfg:"textview-end"`
 }
 
 func DefaultKeymap() Keymap {
@@ -157,11 +242,16 @@ func DefaultKeymap() Keymap {
 		NextFocus:          KeyBindings{{key: tcell.KeyTab}},
 		PreviousFocus:      KeyBindings{{key: tcell.KeyBacktab}},
 		ToggleInputPane:    KeyBindings{{key: tcell.KeyCtrlO}},
+		ToggleMenu: KeyBindings{
+			{key: tcell.KeyCtrlUnderscore},
+			{key: tcell.KeyRune, rune: '/', mods: tcell.ModCtrl},
+			{key: tcell.KeyRune, rune: '?', mods: tcell.ModCtrl},
+			{key: tcell.KeyRune, rune: '_', mods: tcell.ModCtrl},
+		},
 
-		TextviewPageUp:    KeyBindings{{key: tcell.KeyRune, rune: 'b'}},
-		TextviewPageUpAlt: KeyBindings{{key: tcell.KeyRune, rune: 'v', mods: tcell.ModAlt}},
-		TextviewPageDown:  KeyBindings{{key: tcell.KeyRune, rune: 'f'}},
-		TextviewEnd:       KeyBindings{{key: tcell.KeyRune, rune: 'G'}},
+		TextviewPageUp:   KeyBindings{{key: tcell.KeyRune, rune: 'b'}, {key: tcell.KeyRune, rune: 'v', mods: tcell.ModAlt}},
+		TextviewPageDown: KeyBindings{{key: tcell.KeyRune, rune: 'f'}},
+		TextviewEnd:      KeyBindings{{key: tcell.KeyRune, rune: 'G'}},
 	}
 }
 
@@ -210,8 +300,21 @@ func isModifier(value string) bool {
 	}
 }
 
+func isControlKey(key tcell.Key) bool {
+	if key < tcell.KeyCtrlSpace || key > tcell.KeyCtrlUnderscore {
+		return false
+	}
+
+	switch key {
+	case tcell.KeyBackspace, tcell.KeyTab, tcell.KeyEsc, tcell.KeyEnter:
+		return false
+	default:
+		return true
+	}
+}
+
 var keyNameLookup = func() map[string]tcell.Key {
-	lookup := make(map[string]tcell.Key, len(tcell.KeyNames)+5)
+	lookup := make(map[string]tcell.Key, len(tcell.KeyNames)+8)
 	for key, name := range tcell.KeyNames {
 		lookup[strings.ToLower(name)] = key
 	}
@@ -221,6 +324,9 @@ var keyNameLookup = func() map[string]tcell.Key {
 	lookup["pagedown"] = tcell.KeyPgDn
 	lookup["pgdown"] = tcell.KeyPgDn
 	lookup["shift-tab"] = tcell.KeyBacktab
+	lookup["ctrl-/"] = tcell.KeyCtrlUnderscore
+	lookup["ctrl-?"] = tcell.KeyCtrlUnderscore
+	lookup["ctrl-_"] = tcell.KeyCtrlUnderscore
 
 	return lookup
 }()

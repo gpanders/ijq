@@ -94,7 +94,7 @@ precedence.
 	*half-page-down*, *filter-cursor-right*, *filter-cursor-left*,
 	*focus-input-pane-up*, *focus-input-pane-left*, *focus-output-pane*,
 	*focus-filter-input*, *next-focus*, *previous-focus*,
-	*toggle-input-pane*, *textview-page-up*, *textview-page-up-alt*,
+	*toggle-input-pane*, *toggle-menu*, *textview-page-up*,
 	*textview-page-down*, and *textview-end*.
 
 # KEY BINDINGS
@@ -150,6 +150,29 @@ section of the config file.
 *Ctrl-O*
 	Toggle visibility of the input (left) viewing pane.
 
+*Ctrl-/*, *Ctrl-?*, *Ctrl-\_*
+	Open or close the overlay menu.
+
+*Space*
+	When the overlay root menu is open, activate the selected menu entry.
+	When the Configure subview is open, toggle the selected option.
+
+*Enter*
+	When the Configure subview is open, toggle the selected option.
+	When the Manage history subview is open, apply the selected history
+	entry to the filter and close the overlay.
+
+*x*
+	When the Manage history subview is open, delete the selected history
+	entry after confirmation.
+
+*/*
+	When the Manage history subview is open, open a filter input for
+	history entries.
+
+*Esc*, *Ctrl-C*, *q*
+	When overlay is open, go back to the root menu or close overlay.
+
 *u*, *d*, *f*, *b*
 	When one of the viewing panes has focus, scroll a half/full page
 	up/down.
@@ -165,7 +188,8 @@ section of the config file.
 	to the history file.
 
 *Ctrl-C*
-	Exit *ijq* immediately, discarding all state.
+	When overlay is open, close overlay. Otherwise, exit *ijq*
+	immediately, discarding all state.
 
 # DEMO
 

@@ -12,7 +12,19 @@ func TestDefaultKeymap(t *testing.T) {
 
 	assert.True(t, keymap.SubmitFilter.Matches(tcell.NewEventKey(tcell.KeyEnter, ' ', tcell.ModNone)))
 	assert.True(t, keymap.ToggleInputPane.Matches(tcell.NewEventKey(tcell.KeyCtrlO, ' ', tcell.ModNone)))
+	assert.True(t, keymap.ToggleMenu.Matches(tcell.NewEventKey(tcell.KeyCtrlUnderscore, ' ', tcell.ModNone)))
+	assert.True(t, keymap.ToggleMenu.Matches(tcell.NewEventKey(tcell.KeyRune, '/', tcell.ModCtrl)))
+	assert.True(t, keymap.ToggleMenu.Matches(tcell.NewEventKey(tcell.KeyRune, '?', tcell.ModCtrl)))
+	assert.True(t, keymap.ToggleMenu.Matches(tcell.NewEventKey(tcell.KeyRune, '_', tcell.ModCtrl)))
+	assert.True(t, keymap.TextviewPageUp.Matches(tcell.NewEventKey(tcell.KeyRune, 'b', tcell.ModNone)))
+	assert.True(t, keymap.TextviewPageUp.Matches(tcell.NewEventKey(tcell.KeyRune, 'v', tcell.ModAlt)))
 	assert.True(t, keymap.LineStart.Matches(tcell.NewEventKey(tcell.KeyRune, '0', tcell.ModNone)))
+}
+
+func TestKeyBindingString(t *testing.T) {
+	assert.Equal(t, "Ctrl-/", KeyBinding{key: tcell.KeyCtrlUnderscore}.String())
+	assert.Equal(t, "Ctrl+q", KeyBinding{key: tcell.KeyRune, rune: 'q', mods: tcell.ModCtrl}.String())
+	assert.Equal(t, "Enter", KeyBinding{key: tcell.KeyEnter}.String())
 }
 
 func TestUnmarshalTextAltRune(t *testing.T) {
@@ -90,6 +102,30 @@ func TestUnmarshalTextCtrlPlusRune(t *testing.T) {
 	assert.True(t, binding.Matches(tcell.NewEventKey(tcell.KeyRune, '+', tcell.ModCtrl)))
 }
 
+func TestUnmarshalTextCtrlSlashAlias(t *testing.T) {
+	var binding KeyBinding
+	err := binding.UnmarshalText([]byte("Ctrl+/"))
+	assert.NoError(t, err)
+
+	assert.True(t, binding.Matches(tcell.NewEventKey(tcell.KeyCtrlUnderscore, ' ', tcell.ModNone)))
+}
+
+func TestUnmarshalTextCtrlQuestionAlias(t *testing.T) {
+	var binding KeyBinding
+	err := binding.UnmarshalText([]byte("Ctrl-?"))
+	assert.NoError(t, err)
+
+	assert.True(t, binding.Matches(tcell.NewEventKey(tcell.KeyCtrlUnderscore, ' ', tcell.ModNone)))
+}
+
+func TestUnmarshalTextCtrlUnderscoreAlias(t *testing.T) {
+	var binding KeyBinding
+	err := binding.UnmarshalText([]byte("Ctrl-_"))
+	assert.NoError(t, err)
+
+	assert.True(t, binding.Matches(tcell.NewEventKey(tcell.KeyCtrlUnderscore, ' ', tcell.ModNone)))
+}
+
 func TestUnmarshalTextRejectsEmptyValue(t *testing.T) {
 	var binding KeyBinding
 	err := binding.UnmarshalText([]byte(" "))
@@ -120,4 +156,12 @@ func TestBindingRequiresExactModifiers(t *testing.T) {
 
 	assert.True(t, binding.Matches(tcell.NewEventKey(tcell.KeyUp, ' ', tcell.ModShift)))
 	assert.False(t, binding.Matches(tcell.NewEventKey(tcell.KeyUp, ' ', tcell.ModShift|tcell.ModCtrl)))
+}
+
+func TestControlKeyBindingMatchesCtrlModifier(t *testing.T) {
+	binding := KeyBinding{key: tcell.KeyCtrlUnderscore}
+
+	assert.True(t, binding.Matches(tcell.NewEventKey(tcell.KeyCtrlUnderscore, ' ', tcell.ModCtrl)))
+	assert.True(t, binding.Matches(tcell.NewEventKey(tcell.KeyCtrlUnderscore, ' ', tcell.ModCtrl|tcell.ModShift)))
+	assert.False(t, binding.Matches(tcell.NewEventKey(tcell.KeyCtrlUnderscore, ' ', tcell.ModAlt)))
 }

@@ -1,6 +1,6 @@
 module codeberg.org/gpanders/ijq
 
-go 1.20
+go 1.26
 
 require (
 	codeberg.org/emersion/go-scfg v0.1.0

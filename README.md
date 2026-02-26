@@ -70,7 +70,14 @@ scroll up and down. Vi keys also work, i.e. you can use `j`/`k` to scroll up or
 down, `g` to move to the top of the view, `G` to jump to the bottom of the
 view, and `Ctrl-F`/`Ctrl-B` to scroll up or down a page at a time.
 
-Use `Ctrl-C` to exit `ijq` immediately, discarding all filters and state.
+Press `Ctrl-/` to open an overlay menu (`Ctrl-?` and `Ctrl-_` are also
+accepted) with some useful actions and configuration options.
+
+Use `Esc` to go back to the root overlay menu (or close it from the root), and
+use `q` to close the overlay from any subview.
+
+Use `Ctrl-C` to close the overlay when it is open, or to exit `ijq`
+immediately (discarding all filters and state) when the overlay is closed.
 
 You can configure the colors by setting the `JQ_COLORS` environment variable.
 See the [jq documentation][colors] for more details.

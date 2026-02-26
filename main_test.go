@@ -25,6 +25,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gdamore/tcell/v2"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -50,6 +51,16 @@ func TestOptionsToSlice(t *testing.T) {
 	assert.Contains(t, opt.ToSlice(), "-r")
 	opt.rawOutput = false
 	assert.NotContains(t, opt.ToSlice(), "-r")
+
+	opt.joinOutput = true
+	assert.Contains(t, opt.ToSlice(), "-j")
+	opt.joinOutput = false
+	assert.NotContains(t, opt.ToSlice(), "-j")
+
+	opt.asciiOutput = true
+	assert.Contains(t, opt.ToSlice(), "-a")
+	opt.asciiOutput = false
+	assert.NotContains(t, opt.ToSlice(), "-a")
 
 	opt.rawInput = true
 	assert.Contains(t, opt.ToSlice(), "-R")
@@ -139,4 +150,38 @@ func TestDocumentExecError(t *testing.T) {
 	assert.Equal(t, testMsg, string(exiterr.Stderr))
 
 	assert.Empty(t, buffer.String())
+}
+
+func TestNormalizeOverlayEvent(t *testing.T) {
+	keymap := DefaultKeymap()
+
+	event := normalizeOverlayEvent(tcell.NewEventKey(tcell.KeyCtrlN, ' ', tcell.ModNone), keymap)
+	assert.Equal(t, tcell.KeyDown, event.Key())
+
+	event = normalizeOverlayEvent(tcell.NewEventKey(tcell.KeyCtrlP, ' ', tcell.ModNone), keymap)
+	assert.Equal(t, tcell.KeyUp, event.Key())
+
+	event = normalizeOverlayEvent(tcell.NewEventKey(tcell.KeyCtrlV, ' ', tcell.ModNone), keymap)
+	assert.Equal(t, tcell.KeyPgDn, event.Key())
+
+	event = normalizeOverlayEvent(tcell.NewEventKey(tcell.KeyCtrlD, ' ', tcell.ModNone), keymap)
+	assert.Equal(t, tcell.KeyPgDn, event.Key())
+
+	event = normalizeOverlayEvent(tcell.NewEventKey(tcell.KeyCtrlU, ' ', tcell.ModNone), keymap)
+	assert.Equal(t, tcell.KeyPgUp, event.Key())
+
+	original := tcell.NewEventKey(tcell.KeyRune, 'x', tcell.ModNone)
+	event = normalizeOverlayEvent(original, keymap)
+	assert.Equal(t, original, event)
+}
+
+func TestBuildMainHelpTextUsesConfiguredBindings(t *testing.T) {
+	keymap := DefaultKeymap()
+	keymap.ToggleMenu = KeyBindings{{key: tcell.KeyRune, rune: 'm', mods: tcell.ModAlt}}
+	keymap.SubmitFilter = KeyBindings{{key: tcell.KeyRune, rune: 's', mods: tcell.ModCtrl}}
+
+	help := buildMainHelpText(keymap)
+	assert.Contains(t, help, "Alt+m")
+	assert.Contains(t, help, "Ctrl-C")
+	assert.Contains(t, help, "Ctrl+s")
 }

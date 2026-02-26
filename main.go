@@ -31,6 +31,8 @@ import (
 	"strings"
 	"sync"
 
+	"codeberg.org/gpanders/ijq/internal/overlay"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"golang.org/x/term"
@@ -108,6 +110,58 @@ func (o *Options) ToSlice() []string {
 	}
 
 	return opts
+}
+
+func runtimeOptionValue(options *Options, flag string) bool {
+	switch flag {
+	case "-c":
+		return options.compact
+	case "-n":
+		return options.nullInput
+	case "-s":
+		return options.slurp
+	case "-r":
+		return options.rawOutput
+	case "-j":
+		return options.joinOutput
+	case "-a":
+		return options.asciiOutput
+	case "-R":
+		return options.rawInput
+	case "-M":
+		return options.monochrome
+	case "-C":
+		return options.forceColor
+	case "-S":
+		return options.sortKeys
+	default:
+		return false
+	}
+}
+
+func setRuntimeOptionValue(options *Options, flag string, value bool) {
+	switch flag {
+	case "-c":
+		options.compact = value
+	case "-n":
+		options.nullInput = value
+	case "-s":
+		options.slurp = value
+	case "-r":
+		options.rawOutput = value
+	case "-j":
+		options.joinOutput = value
+	case "-a":
+		options.asciiOutput = value
+	case "-R":
+		options.rawInput = value
+	case "-M":
+		options.monochrome = value
+	case "-C":
+		options.forceColor = value
+	case "-S":
+		options.sortKeys = value
+	}
 }
 
 type Document struct {
@@ -332,6 +386,93 @@ func updateScrollIndicator(name string, lineCount int, tv *tview.TextView) {
 	tv.SetTitle(fmt.Sprintf("%s (%d%%)", name, percent))
 }
 
+func centerPrimitive(width int, height int, primitive tview.Primitive) tview.Primitive {
+	return tview.NewGrid().
+		SetRows(0, height, 0).
+		SetColumns(0, width, 0).
+		AddItem(primitive, 1, 1, 1, 1, 0, 0, true)
+}
+
+func normalizeOverlayEvent(event *tcell.EventKey, keymap Keymap) *tcell.EventKey {
+	if keymap.MoveDown.Matches(event) {
+		return tcell.NewEventKey(tcell.KeyDown, ' ', tcell.ModNone)
+	}
+
+	if keymap.MoveUp.Matches(event) {
+		return tcell.NewEventKey(tcell.KeyUp, ' ', tcell.ModNone)
+	}
+
+	if keymap.PageDown.Matches(event) || keymap.HalfPageDown.Matches(event) {
+		return tcell.NewEventKey(tcell.KeyPgDn, ' ', tcell.ModNone)
+	}
+
+	if keymap.HalfPageUp.Matches(event) {
+		return tcell.NewEventKey(tcell.KeyPgUp, ' ', tcell.ModNone)
+	}
+
+	if keymap.LineStart.Matches(event) {
+		return tcell.NewEventKey(tcell.KeyHome, ' ', tcell.ModNone)
+	}
+
+	if keymap.LineEnd.Matches(event) {
+		return tcell.NewEventKey(tcell.KeyEnd, ' ', tcell.ModNone)
+	}
+
+	return event
+}
+
+func buildMainHelpText(keymap Keymap) string {
+	menuKey := keymap.ToggleMenu.PrimaryString()
+	if menuKey == "" {
+		menuKey = "Ctrl-/"
+	}
+
+	submitKey := keymap.SubmitFilter.PrimaryString()
+	if submitKey == "" {
+		submitKey = "Enter"
+	}
+
+	return fmt.Sprintf("[::d]%s[::-] [::b]menu[::-]   [::d]Ctrl-C[::-] [::b]quit[::-]   [::d]%s[::-] [::b]quit and write output[::-]", menuKey, submitKey)
+}
+
+func appendKeybindingEntries(rows *[]overlay.KeybindingEntry, action string, bindings KeyBindings) {
+	for _, binding := range bindings {
+		*rows = append(*rows, overlay.KeybindingEntry{Action: action, Keybinding: binding.String()})
+	}
+}
+
+func activeKeybindingEntries(keymap Keymap) []overlay.KeybindingEntry {
+	rows := make([]overlay.KeybindingEntry, 0, 48)
+
+	appendKeybindingEntries(&rows, "submit-filter", keymap.SubmitFilter)
+	appendKeybindingEntries(&rows, "move-down", keymap.MoveDown)
+	appendKeybindingEntries(&rows, "move-up", keymap.MoveUp)
+	appendKeybindingEntries(&rows, "page-down", keymap.PageDown)
+	appendKeybindingEntries(&rows, "line-start", keymap.LineStart)
+	appendKeybindingEntries(&rows, "line-end", keymap.LineEnd)
+	appendKeybindingEntries(&rows, "half-page-up", keymap.HalfPageUp)
+	appendKeybindingEntries(&rows, "half-page-down", keymap.HalfPageDown)
+	appendKeybindingEntries(&rows, "filter-cursor-right", keymap.FilterCursorRight)
+	appendKeybindingEntries(&rows, "filter-cursor-left", keymap.FilterCursorLeft)
+	appendKeybindingEntries(&rows, "focus-input-pane-up", keymap.FocusInputPaneUp)
+	appendKeybindingEntries(&rows, "focus-input-pane-left", keymap.FocusInputPaneLeft)
+	appendKeybindingEntries(&rows, "focus-output-pane", keymap.FocusOutputPane)
+	appendKeybindingEntries(&rows, "focus-filter-input", keymap.FocusFilterInput)
+	appendKeybindingEntries(&rows, "next-focus", keymap.NextFocus)
+	appendKeybindingEntries(&rows, "previous-focus", keymap.PreviousFocus)
+	appendKeybindingEntries(&rows, "toggle-input-pane", keymap.ToggleInputPane)
+	appendKeybindingEntries(&rows, "toggle-menu", keymap.ToggleMenu)
+	appendKeybindingEntries(&rows, "textview-page-up", keymap.TextviewPageUp)
+	appendKeybindingEntries(&rows, "textview-page-down", keymap.TextviewPageDown)
+	appendKeybindingEntries(&rows, "textview-end", keymap.TextviewEnd)
+
+	rows = append(rows,
+		overlay.KeybindingEntry{Action: "quit", Keybinding: "Ctrl-C"},
+	)
+
+	return rows
+}
+
 func createApp(doc Document) *tview.Application {
 	app := tview.NewApplication()
 
@@ -355,6 +496,11 @@ func createApp(doc Document) *tview.Application {
 
 	errorView := tview.NewTextView()
 	errorView.SetDynamicColors(false).SetTitle("Error").SetBorder(true)
+
+	helpView := tview.NewTextView()
+	helpView.SetDynamicColors(true)
+	helpView.SetTextAlign(tview.AlignCenter)
+	helpView.SetText(buildMainHelpText(doc.options.config.Keymap))
 
 	var filterHistory history
 	filterHistory.Init(doc.options.config.HistoryFile)
@@ -395,6 +541,17 @@ func createApp(doc Document) *tview.Application {
 	pending := true
 
 	filterMap := make(map[string][]string)
+	queueDocumentUpdate := func(update func(*Document)) {
+		cancel()
+
+		mutex.Lock()
+		defer mutex.Unlock()
+
+		update(&doc)
+		pending = true
+		cond.Signal()
+	}
+
 	filterInput := tview.NewInputField()
 	filterInput.
 		SetText(doc.filter).
@@ -408,14 +565,9 @@ func createApp(doc Document) *tview.Application {
 				return
 			}
 
-			cancel()
-
-			mutex.Lock()
-			defer mutex.Unlock()
-
-			doc = doc.WithFilter(text)
-			pending = true
-			cond.Signal()
+			queueDocumentUpdate(func(next *Document) {
+				*next = next.WithFilter(text)
+			})
 		}).
 		SetDoneFunc(func(key tcell.Key) {
 			if key == tcell.KeyEnter && submitOnEnter {
@@ -424,7 +576,7 @@ func createApp(doc Document) *tview.Application {
 		}).
 		SetAutocompleteFunc(func(text string) []string {
 			if text == "" {
-				return filterHistory.Items
+				return filterHistory.Entries()
 			}
 
 			if pos := strings.LastIndexByte(text, '.'); pos != -1 {
@@ -556,7 +708,7 @@ func createApp(doc Document) *tview.Application {
 		AddItem(inputView, 0, inputPaneProportion, false).
 		AddItem(outputView, 0, 1, false)
 	grid := tview.NewGrid().
-		SetRows(0, 3, 4).
+		SetRows(0, 3, 4, 1).
 		SetColumns(0).
 		AddItem(viewFlex, 0, 0, 1, 1, 0, 0, false).
 		AddItem(tview.NewFlex().
@@ -566,11 +718,82 @@ func createApp(doc Document) *tview.Application {
 		AddItem(tview.NewFlex().
 			AddItem(tview.NewBox(), 0, 1, false).
 			AddItem(errorView, 0, 4, false).
-			AddItem(tview.NewBox(), 0, 1, false), 2, 0, 1, 1, 0, 0, false)
+			AddItem(tview.NewBox(), 0, 1, false), 2, 0, 1, 1, 0, 0, false).
+		AddItem(helpView, 3, 0, 1, 1, 0, 0, false)
+
+	pages := tview.NewPages().
+		AddPage("main", grid, true, true)
+
+	overlayPopup := overlay.NewController(app, pages, "overlay", overlay.Callbacks{
+		ConfigureRows: func() []string {
+			return overlay.ConfigureRows(func(flag string) bool {
+				return runtimeOptionValue(&doc.options, flag)
+			})
+		},
+		ToggleConfigureRow: func(index int) {
+			queueDocumentUpdate(func(next *Document) {
+				overlay.ToggleConfigureOption(index,
+					func(flag string) bool {
+						return runtimeOptionValue(&next.options, flag)
+					},
+					func(flag string, value bool) {
+						setRuntimeOptionValue(&next.options, flag, value)
+					},
+				)
+			})
+		},
+		SaveCurrentFilterToHistory: func() (string, error) {
+			expression := strings.TrimSpace(filterInput.GetText())
+			if expression == "" {
+				return "filter is empty", nil
+			}
+
+			if filterHistory.path == "" {
+				return "history disabled", nil
+			}
+
+			added, err := filterHistory.AddIfMissing(expression)
+			if err != nil {
+				return "", err
+			}
+
+			if added {
+				return "saved", nil
+			}
+
+			return "already in history", nil
+		},
+		LoadHistoryEntries: func() []string {
+			return filterHistory.Entries()
+		},
+		DeleteHistoryEntryAt: func(index int) error {
+			return filterHistory.DeleteAt(index)
+		},
+		ApplyHistoryEntry: func(expression string) {
+			errorView.Clear()
+			filterInput.SetFieldTextColor(tcell.ColorDefault)
+			filterInput.SetText(expression)
+		},
+		ActiveKeybindings: func() []overlay.KeybindingEntry {
+			return activeKeybindingEntries(doc.options.config.Keymap)
+		},
+	})
+
+	pages.AddPage("overlay", overlayPopup.Primitive(), true, false)
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		focused := app.GetFocus()
 		activeKeymaps := doc.options.config.Keymap
+
+		if overlayPopup.IsOpen() {
+			if activeKeymaps.ToggleMenu.Matches(event) {
+				overlayPopup.Close()
+				return nil
+			}
+
+			event = normalizeOverlayEvent(event, activeKeymaps)
+			return overlayPopup.HandleInput(event)
+		}
 
 		if filterInput.HasFocus() {
 			if event.Key() == tcell.KeyEnter && event.Modifiers() == tcell.ModNone {
@@ -588,6 +811,16 @@ func createApp(doc Document) *tview.Application {
 				// even if they are used as key bindings in other contexts.
 				return event
 			}
+		}
+
+		if activeKeymaps.ToggleMenu.Matches(event) {
+			overlayPopup.Open()
+			return nil
+		}
+
+		if event.Key() == tcell.KeyCtrlC {
+			app.Stop()
+			return nil
 		}
 
 		if activeKeymaps.MoveDown.Matches(event) {
@@ -723,10 +956,6 @@ func createApp(doc Document) *tview.Application {
 				return tcell.NewEventKey(tcell.KeyCtrlB, ' ', tcell.ModNone)
 			}
 
-			if activeKeymaps.TextviewPageUpAlt.Matches(event) {
-				return tcell.NewEventKey(tcell.KeyPgUp, ' ', tcell.ModNone)
-			}
-
 			if activeKeymaps.TextviewPageDown.Matches(event) {
 				return tcell.NewEventKey(tcell.KeyCtrlF, ' ', tcell.ModNone)
 			}
@@ -766,7 +995,7 @@ func createApp(doc Document) *tview.Application {
 		}
 	})
 
-	app.SetRoot(grid, true).EnableMouse(true).SetFocus(grid)
+	app.SetRoot(pages, true).EnableMouse(true).SetFocus(grid)
 
 	return app
 }
