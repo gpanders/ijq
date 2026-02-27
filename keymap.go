@@ -214,6 +214,7 @@ type Keymap struct {
 	NextFocus          KeyBindings `scfg:"next-focus"`
 	PreviousFocus      KeyBindings `scfg:"previous-focus"`
 	ToggleInputPane    KeyBindings `scfg:"toggle-input-pane"`
+	SaveFilterHistory  KeyBindings `scfg:"save-filter-history"`
 	ToggleMenu         KeyBindings `scfg:"toggle-menu"`
 
 	TextviewPageUp   KeyBindings `scfg:"textview-page-up"`
@@ -242,6 +243,7 @@ func DefaultKeymap() Keymap {
 		NextFocus:          KeyBindings{{key: tcell.KeyTab}},
 		PreviousFocus:      KeyBindings{{key: tcell.KeyBacktab}},
 		ToggleInputPane:    KeyBindings{{key: tcell.KeyCtrlO}},
+		SaveFilterHistory:  KeyBindings{{key: tcell.KeyCtrlS}},
 		ToggleMenu: KeyBindings{
 			{key: tcell.KeyCtrlUnderscore},
 			{key: tcell.KeyRune, rune: '/', mods: tcell.ModCtrl},

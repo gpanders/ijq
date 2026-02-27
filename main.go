@@ -461,6 +461,7 @@ func activeKeybindingEntries(keymap Keymap) []overlay.KeybindingEntry {
 	appendKeybindingEntries(&rows, "next-focus", keymap.NextFocus)
 	appendKeybindingEntries(&rows, "previous-focus", keymap.PreviousFocus)
 	appendKeybindingEntries(&rows, "toggle-input-pane", keymap.ToggleInputPane)
+	appendKeybindingEntries(&rows, "save-filter-history", keymap.SaveFilterHistory)
 	appendKeybindingEntries(&rows, "toggle-menu", keymap.ToggleMenu)
 	appendKeybindingEntries(&rows, "textview-page-up", keymap.TextviewPageUp)
 	appendKeybindingEntries(&rows, "textview-page-down", keymap.TextviewPageDown)
@@ -645,6 +646,28 @@ func createApp(doc Document) *tview.Application {
 		SetTitle("Filter").
 		SetBorder(true)
 
+	saveCurrentFilterToHistory := func() (status string, expression string, err error) {
+		expression = strings.TrimSpace(filterInput.GetText())
+		if expression == "" {
+			return "empty", expression, nil
+		}
+
+		if filterHistory.path == "" {
+			return "disabled", expression, nil
+		}
+
+		added, err := filterHistory.AddIfMissing(expression)
+		if err != nil {
+			return "", expression, err
+		}
+
+		if added {
+			return "added", expression, nil
+		}
+
+		return "exists", expression, nil
+	}
+
 	// Initialize the initial line counts to some large number. If the
 	// input is small, this will be updated to the correct value before it
 	// is ever displayed in the UI. But for large inputs (which will take
@@ -724,6 +747,44 @@ func createApp(doc Document) *tview.Application {
 	pages := tview.NewPages().
 		AddPage("main", grid, true, true)
 
+	historyNotice := tview.NewTextView()
+	historyNotice.SetBorder(true)
+	historyNotice.SetTitle("History")
+	historyNotice.SetTextAlign(tview.AlignCenter)
+
+	historyNoticeContainer := tview.NewGrid().
+		SetRows(0, 3, 0).
+		SetColumns(0, 24, 0).
+		AddItem(historyNotice, 1, 1, 1, 1, 0, 0, true)
+
+	const historyNoticePage = "history-notice"
+	pages.AddPage(historyNoticePage, historyNoticeContainer, true, false)
+
+	isHistoryNoticeOpen := false
+	showHistoryNotice := func(message string) {
+		historyNotice.SetText(message)
+
+		width := tview.TaggedStringWidth(message) + 4
+		if width < 24 {
+			width = 24
+		}
+
+		historyNoticeContainer.SetColumns(0, width, 0)
+		historyNoticeContainer.SetRows(0, 3, 0)
+		pages.ShowPage(historyNoticePage)
+		pages.SendToFront(historyNoticePage)
+		isHistoryNoticeOpen = true
+	}
+
+	closeHistoryNotice := func() {
+		if !isHistoryNoticeOpen {
+			return
+		}
+
+		pages.HidePage(historyNoticePage)
+		isHistoryNoticeOpen = false
+	}
+
 	overlayPopup := overlay.NewController(app, pages, "overlay", overlay.Callbacks{
 		ConfigureRows: func() []string {
 			return overlay.ConfigureRows(func(flag string) bool {
@@ -743,25 +804,23 @@ func createApp(doc Document) *tview.Application {
 			})
 		},
 		SaveCurrentFilterToHistory: func() (string, error) {
-			expression := strings.TrimSpace(filterInput.GetText())
-			if expression == "" {
-				return "filter is empty", nil
-			}
-
-			if filterHistory.path == "" {
-				return "history disabled", nil
-			}
-
-			added, err := filterHistory.AddIfMissing(expression)
+			status, _, err := saveCurrentFilterToHistory()
 			if err != nil {
 				return "", err
 			}
 
-			if added {
+			switch status {
+			case "added":
 				return "saved", nil
+			case "exists":
+				return "already in history", nil
+			case "empty":
+				return "filter is empty", nil
+			case "disabled":
+				return "history disabled", nil
+			default:
+				return "", nil
 			}
-
-			return "already in history", nil
 		},
 		LoadHistoryEntries: func() []string {
 			return filterHistory.Entries()
@@ -784,6 +843,11 @@ func createApp(doc Document) *tview.Application {
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		focused := app.GetFocus()
 		activeKeymaps := doc.options.config.Keymap
+
+		if isHistoryNoticeOpen {
+			closeHistoryNotice()
+			return nil
+		}
 
 		if overlayPopup.IsOpen() {
 			if activeKeymaps.ToggleMenu.Matches(event) {
@@ -815,6 +879,28 @@ func createApp(doc Document) *tview.Application {
 
 		if activeKeymaps.ToggleMenu.Matches(event) {
 			overlayPopup.Open()
+			return nil
+		}
+
+		if activeKeymaps.SaveFilterHistory.Matches(event) {
+			status, expression, err := saveCurrentFilterToHistory()
+			if err != nil {
+				showHistoryNotice("Failed to save filter to history")
+				return nil
+			}
+
+			switch status {
+			case "added":
+				expression = strings.ReplaceAll(expression, "\n", " ")
+				showHistoryNotice(fmt.Sprintf("Added %s to history", expression))
+			case "exists":
+				showHistoryNotice("Filter already in history")
+			case "empty":
+				showHistoryNotice("Filter is empty")
+			case "disabled":
+				showHistoryNotice("History is disabled")
+			}
+
 			return nil
 		}
 

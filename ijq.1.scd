@@ -94,7 +94,8 @@ precedence.
 	*half-page-down*, *filter-cursor-right*, *filter-cursor-left*,
 	*focus-input-pane-up*, *focus-input-pane-left*, *focus-output-pane*,
 	*focus-filter-input*, *next-focus*, *previous-focus*,
-	*toggle-input-pane*, *toggle-menu*, *textview-page-up*,
+	*toggle-input-pane*, *save-filter-history*, *toggle-menu*,
+	*textview-page-up*,
 	*textview-page-down*, and *textview-end*.
 
 # KEY BINDINGS
@@ -149,6 +150,9 @@ section of the config file.
 
 *Ctrl-O*
 	Toggle visibility of the input (left) viewing pane.
+
+*Ctrl-S*
+	Save the current filter to history and show a confirmation popup.
 
 *Ctrl-/*, *Ctrl-?*, *Ctrl-\_*
 	Open or close the overlay menu.

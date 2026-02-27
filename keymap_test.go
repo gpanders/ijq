@@ -12,6 +12,7 @@ func TestDefaultKeymap(t *testing.T) {
 
 	assert.True(t, keymap.SubmitFilter.Matches(tcell.NewEventKey(tcell.KeyEnter, ' ', tcell.ModNone)))
 	assert.True(t, keymap.ToggleInputPane.Matches(tcell.NewEventKey(tcell.KeyCtrlO, ' ', tcell.ModNone)))
+	assert.True(t, keymap.SaveFilterHistory.Matches(tcell.NewEventKey(tcell.KeyCtrlS, ' ', tcell.ModNone)))
 	assert.True(t, keymap.ToggleMenu.Matches(tcell.NewEventKey(tcell.KeyCtrlUnderscore, ' ', tcell.ModNone)))
 	assert.True(t, keymap.ToggleMenu.Matches(tcell.NewEventKey(tcell.KeyRune, '/', tcell.ModCtrl)))
 	assert.True(t, keymap.ToggleMenu.Matches(tcell.NewEventKey(tcell.KeyRune, '?', tcell.ModCtrl)))

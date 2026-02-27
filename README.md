@@ -64,6 +64,9 @@ deleting everything in the filter field. Change the history file used with the
 
 If `$XDG_DATA_HOME` is undefined, `~/.local/share/ijq/history` is used.
 
+Press `Ctrl+s` to save the current filter to history without exiting. A
+confirmation popup is shown and can be dismissed with any key.
+
 Use `Shift` plus the arrow keys to move between the different windows. When
 either of the input or output views have focus, you can use the arrow keys to
 scroll up and down. Vi keys also work, i.e. you can use `j`/`k` to scroll up or
