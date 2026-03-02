@@ -24,7 +24,7 @@ func TestDefaultKeymap(t *testing.T) {
 
 func TestKeyBindingString(t *testing.T) {
 	assert.Equal(t, "Ctrl-/", KeyBinding{key: tcell.KeyCtrlUnderscore}.String())
-	assert.Equal(t, "Ctrl+q", KeyBinding{key: tcell.KeyRune, rune: 'q', mods: tcell.ModCtrl}.String())
+	assert.Equal(t, "Ctrl-q", KeyBinding{key: tcell.KeyRune, rune: 'q', mods: tcell.ModCtrl}.String())
 	assert.Equal(t, "Enter", KeyBinding{key: tcell.KeyEnter}.String())
 }
 

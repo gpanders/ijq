@@ -168,7 +168,7 @@ func formatKeyLabel(mods tcell.ModMask, base string) string {
 	}
 
 	parts = append(parts, base)
-	return strings.Join(parts, "+")
+	return strings.Join(parts, "-")
 }
 
 func keyName(key tcell.Key) string {

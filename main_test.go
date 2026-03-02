@@ -120,7 +120,7 @@ func TestBuildMainHelpTextUsesConfiguredBindings(t *testing.T) {
 	keymap.SubmitFilter = KeyBindings{{key: tcell.KeyRune, rune: 's', mods: tcell.ModCtrl}}
 
 	help := buildMainHelpText(keymap)
-	assert.Contains(t, help, "Alt+m")
+	assert.Contains(t, help, "Alt-m")
 	assert.Contains(t, help, "Ctrl-C")
-	assert.Contains(t, help, "Ctrl+s")
+	assert.Contains(t, help, "Ctrl-s")
 }
