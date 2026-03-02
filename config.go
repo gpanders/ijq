@@ -6,34 +6,20 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"codeberg.org/emersion/go-scfg"
+	"codeberg.org/gpanders/ijq/internal/options"
 )
 
-type LibraryPaths []string
-
-var _ flag.Value = &LibraryPaths{}
-
-func (v *LibraryPaths) String() string {
-	return strings.Join(*v, ",")
-}
-
-func (v *LibraryPaths) Set(value string) error {
-	*v = append(*v, value)
-	return nil
-}
-
 type Config struct {
-	HistoryFile   string       `scfg:"history-file"`
-	JQCommand     string       `scfg:"jq-bin"`
-	HideInputPane bool         `scfg:"hide-input-pane"`
-	LibraryPaths  LibraryPaths `scfg:"library-paths"`
-	Keymap        Keymap       `scfg:"keymaps"`
+	HistoryFile   options.HistoryFile   `scfg:"history-file"`
+	JQCommand     options.JQCommand     `scfg:"jq-bin"`
+	HideInputPane options.HideInputPane `scfg:"hide-input-pane"`
+	LibraryPaths  options.LibraryPaths  `scfg:"library-paths"`
+	Keymap        Keymap                `scfg:"keymaps"`
 }
 
 func DefaultConfig() Config {
@@ -44,9 +30,9 @@ func DefaultConfig() Config {
 		dataDir = filepath.Join(home, ".local", "share")
 	}
 
-	var historyFile string
+	var historyFile options.HistoryFile
 	if dataDir != "" {
-		historyFile = filepath.Join(dataDir, "ijq", "history")
+		historyFile = options.HistoryFile(filepath.Join(dataDir, "ijq", "history"))
 	}
 
 	return Config{

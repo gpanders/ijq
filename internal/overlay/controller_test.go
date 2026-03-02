@@ -3,6 +3,7 @@ package overlay
 import (
 	"testing"
 
+	"codeberg.org/gpanders/ijq/internal/options"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/stretchr/testify/assert"
@@ -50,14 +51,14 @@ func TestHandleInputGlobalNavigationAndClose(t *testing.T) {
 }
 
 func TestHandleInputConfigureModeTogglesAndReturnsRoot(t *testing.T) {
-	toggledIndex := -1
+	var toggledOption options.Option
 
 	controller := newOpenController(t, Callbacks{
 		ConfigureRows: func() []string {
 			return []string{"Option"}
 		},
-		ToggleConfigureRow: func(index int) {
-			toggledIndex = index
+		ToggleConfigureRow: func(option options.Option) {
+			toggledOption = option
 		},
 	})
 
@@ -68,7 +69,9 @@ func TestHandleInputConfigureModeTogglesAndReturnsRoot(t *testing.T) {
 
 	event = controller.HandleInput(runeEvent(' '))
 	assert.Nil(t, event)
-	assert.Equal(t, 0, toggledIndex)
+	if assert.NotNil(t, toggledOption) {
+		assert.Equal(t, "c", toggledOption.Flag())
+	}
 
 	event = controller.HandleInput(keyEvent(tcell.KeyEsc))
 	assert.Nil(t, event)

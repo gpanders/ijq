@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"testing"
 
+	"codeberg.org/gpanders/ijq/internal/options"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestUsageHidesLegacyFlags(t *testing.T) {
-	options := Options{}
+	opts := options.Options{}
 
 	var out bytes.Buffer
-	flagSet, _, _ := newFlagSet("ijq", &options, &out)
+	flagSet, _, _ := newFlagSet("ijq", &opts, &out)
 	flagSet.Usage()
 
 	help := out.String()
@@ -23,48 +24,44 @@ func TestUsageHidesLegacyFlags(t *testing.T) {
 }
 
 func TestLegacyFlagsRemainSupported(t *testing.T) {
-	options := Options{}
+	opts := options.Options{}
 
 	var out bytes.Buffer
-	flagSet, _, _ := newFlagSet("ijq", &options, &out)
+	flagSet, _, _ := newFlagSet("ijq", &opts, &out)
 	err := flagSet.Parse([]string{"-H", "", "-jqbin", "custom-jq", "-hide-input-pane"})
 	assert.NoError(t, err)
 
-	assert.Equal(t, "", options.config.HistoryFile)
-	assert.Equal(t, "custom-jq", options.config.JQCommand)
-	assert.True(t, options.config.HideInputPane)
+	assert.Equal(t, options.HistoryFile(""), opts.HistoryFile)
+	assert.Equal(t, options.JQCommand("custom-jq"), opts.JQCommand)
+	assert.Equal(t, options.HideInputPane(true), opts.HideInputPane)
 }
 
 func TestLibraryPathsFromConfigAndFlags(t *testing.T) {
-	options := Options{
-		config: Config{
-			LibraryPaths: LibraryPaths{"/config/modules"},
-		},
+	opts := options.Options{
+		LibraryPaths: options.LibraryPaths{"/config/modules"},
 	}
 
 	var out bytes.Buffer
-	flagSet, _, _ := newFlagSet("ijq", &options, &out)
+	flagSet, _, _ := newFlagSet("ijq", &opts, &out)
 	err := flagSet.Parse([]string{"-L", "/cli/modules"})
 	assert.NoError(t, err)
 
-	assert.Equal(t, LibraryPaths{"/config/modules", "/cli/modules"}, options.config.LibraryPaths)
+	assert.Equal(t, options.LibraryPaths{"/config/modules", "/cli/modules"}, opts.LibraryPaths)
 }
 
 func TestLegacyFlagsOverrideConfigValues(t *testing.T) {
-	options := Options{
-		config: Config{
-			HistoryFile:   "/config/history",
-			JQCommand:     "/usr/bin/jq",
-			HideInputPane: false,
-		},
+	opts := options.Options{
+		HistoryFile:   options.HistoryFile("/config/history"),
+		JQCommand:     options.JQCommand("/usr/bin/jq"),
+		HideInputPane: options.HideInputPane(false),
 	}
 
 	var out bytes.Buffer
-	flagSet, _, _ := newFlagSet("ijq", &options, &out)
+	flagSet, _, _ := newFlagSet("ijq", &opts, &out)
 	err := flagSet.Parse([]string{"-H", "", "-jqbin", "custom-jq", "-hide-input-pane"})
 	assert.NoError(t, err)
 
-	assert.Equal(t, "", options.config.HistoryFile)
-	assert.Equal(t, "custom-jq", options.config.JQCommand)
-	assert.True(t, options.config.HideInputPane)
+	assert.Equal(t, options.HistoryFile(""), opts.HistoryFile)
+	assert.Equal(t, options.JQCommand("custom-jq"), opts.JQCommand)
+	assert.Equal(t, options.HideInputPane(true), opts.HideInputPane)
 }

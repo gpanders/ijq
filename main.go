@@ -31,6 +31,7 @@ import (
 	"strings"
 	"sync"
 
+	"codeberg.org/gpanders/ijq/internal/options"
 	"codeberg.org/gpanders/ijq/internal/overlay"
 
 	"github.com/gdamore/tcell/v2"
@@ -46,128 +47,11 @@ const alphabet string = "abcdefghijklmnopqrstuvwxyz"
 
 var Version string
 
-type Options struct {
-	compact     bool
-	nullInput   bool
-	slurp       bool
-	rawOutput   bool
-	joinOutput  bool
-	asciiOutput bool
-	rawInput    bool
-	monochrome  bool
-	sortKeys    bool
-	forceColor  bool
-	config      Config
-}
-
-// ToSlice converts the Options struct to a string slice of option flags that gets
-// passed to jq.
-func (o *Options) ToSlice() []string {
-	opts := []string{}
-
-	if o.compact {
-		opts = append(opts, "-c")
-	}
-
-	if o.nullInput {
-		opts = append(opts, "-n")
-	}
-
-	if o.slurp {
-		opts = append(opts, "-s")
-	}
-
-	if o.rawOutput {
-		opts = append(opts, "-r")
-	}
-
-	if o.joinOutput {
-		opts = append(opts, "-j")
-	}
-
-	if o.asciiOutput {
-		opts = append(opts, "-a")
-	}
-
-	if o.rawInput {
-		opts = append(opts, "-R")
-	}
-
-	if o.monochrome {
-		opts = append(opts, "-M")
-	}
-
-	if o.forceColor {
-		opts = append(opts, "-C")
-	}
-
-	if o.sortKeys {
-		opts = append(opts, "-S")
-	}
-
-	for _, path := range o.config.LibraryPaths {
-		opts = append(opts, "-L", path)
-	}
-
-	return opts
-}
-
-func runtimeOptionValue(options *Options, flag string) bool {
-	switch flag {
-	case "-c":
-		return options.compact
-	case "-n":
-		return options.nullInput
-	case "-s":
-		return options.slurp
-	case "-r":
-		return options.rawOutput
-	case "-j":
-		return options.joinOutput
-	case "-a":
-		return options.asciiOutput
-	case "-R":
-		return options.rawInput
-	case "-M":
-		return options.monochrome
-	case "-C":
-		return options.forceColor
-	case "-S":
-		return options.sortKeys
-	default:
-		return false
-	}
-}
-
-func setRuntimeOptionValue(options *Options, flag string, value bool) {
-	switch flag {
-	case "-c":
-		options.compact = value
-	case "-n":
-		options.nullInput = value
-	case "-s":
-		options.slurp = value
-	case "-r":
-		options.rawOutput = value
-	case "-j":
-		options.joinOutput = value
-	case "-a":
-		options.asciiOutput = value
-	case "-R":
-		options.rawInput = value
-	case "-M":
-		options.monochrome = value
-	case "-C":
-		options.forceColor = value
-	case "-S":
-		options.sortKeys = value
-	}
-}
-
 type Document struct {
 	input   string
 	filter  string
-	options Options
+	options options.Options
+	config  Config
 	ctx     context.Context
 }
 
@@ -186,10 +70,10 @@ func (d Document) WriteTo(w io.Writer) (n int64, err error) {
 	opts := d.options
 	if p, ok := w.(*pane); ok {
 		// Writer is a pane, so set options accordingly
-		opts.forceColor = true
-		opts.monochrome = false
-		opts.compact = false
-		opts.rawOutput = false
+		opts.ForceColor = true
+		opts.Monochrome = false
+		opts.CompactOutput = false
+		opts.RawOutput = false
 		w = tview.ANSIWriter(p)
 
 		// Mark the pane as dirty so the text view is cleared before
@@ -206,7 +90,7 @@ func (d Document) WriteTo(w io.Writer) (n int64, err error) {
 	}
 
 	args := append(opts.ToSlice(), d.filter)
-	cmd := exec.CommandContext(d.ctx, d.options.config.JQCommand, args...)
+	cmd := exec.CommandContext(d.ctx, string(d.options.JQCommand), args...)
 
 	var b bytes.Buffer
 	cmd.Stdin = strings.NewReader(d.input)
@@ -237,7 +121,7 @@ func (pane *pane) Write(p []byte) (n int, err error) {
 	return pane.tv.Write(p)
 }
 
-func newFlagSet(name string, options *Options, output io.Writer) (*flag.FlagSet, *string, *bool) {
+func newFlagSet(name string, options *options.Options, output io.Writer) (*flag.FlagSet, *string, *bool) {
 	flagSet := flag.NewFlagSet(name, flag.ExitOnError)
 	flagSet.SetOutput(output)
 	flagSet.Usage = func() {
@@ -261,22 +145,22 @@ func newFlagSet(name string, options *Options, output io.Writer) (*flag.FlagSet,
 		})
 	}
 
-	flagSet.BoolVar(&options.compact, "c", options.compact, "compact instead of pretty-printed output")
-	flagSet.BoolVar(&options.nullInput, "n", options.nullInput, "use `null` as the single input value")
-	flagSet.BoolVar(&options.slurp, "s", options.slurp, "read all inputs into an array and use it as the single input value")
-	flagSet.BoolVar(&options.rawOutput, "r", options.rawOutput, "output strings without escapes and quotes")
-	flagSet.BoolVar(&options.joinOutput, "j", options.joinOutput, "implies -r and output without newline after each output")
-	flagSet.BoolVar(&options.asciiOutput, "a", options.asciiOutput, "output strings by only ASCII characters using escape sequences")
-	flagSet.BoolVar(&options.rawInput, "R", options.rawInput, "read each line as string instead of JSON")
-	flagSet.BoolVar(&options.forceColor, "C", options.forceColor, "colorize JSON output")
-	flagSet.BoolVar(&options.monochrome, "M", options.monochrome, "disable colored output")
-	flagSet.BoolVar(&options.sortKeys, "S", options.sortKeys, "sort keys of each object on output")
-	flagSet.Var(&options.config.LibraryPaths, "L", "search modules from the `dir`ectory")
+	flagSet.Var(&options.CompactOutput, options.CompactOutput.Flag(), "compact instead of pretty-printed output")
+	flagSet.Var(&options.NullInput, options.NullInput.Flag(), "use `null` as the single input value")
+	flagSet.Var(&options.Slurp, options.Slurp.Flag(), "read all inputs into an array and use it as the single input value")
+	flagSet.Var(&options.RawOutput, options.RawOutput.Flag(), "output strings without escapes and quotes")
+	flagSet.Var(&options.JoinOutput, options.JoinOutput.Flag(), "implies -r and output without newline after each output")
+	flagSet.Var(&options.ASCIIOutput, options.ASCIIOutput.Flag(), "output strings by only ASCII characters using escape sequences")
+	flagSet.Var(&options.RawInput, options.RawInput.Flag(), "read each line as string instead of JSON")
+	flagSet.Var(&options.ForceColor, options.ForceColor.Flag(), "colorize JSON output")
+	flagSet.Var(&options.Monochrome, options.Monochrome.Flag(), "disable colored output")
+	flagSet.Var(&options.SortKeys, options.SortKeys.Flag(), "sort keys of each object on output")
+	flagSet.Var(&options.LibraryPaths, options.LibraryPaths.Flag(), "search modules from the `dir`ectory")
 
 	// Legacy options kept for backward compatibility.
-	flagSet.BoolVar(&options.config.HideInputPane, "hide-input-pane", options.config.HideInputPane, "hide input (left) viewing pane")
-	flagSet.StringVar(&options.config.JQCommand, "jqbin", options.config.JQCommand, "name of or path to jq binary to use")
-	flagSet.StringVar(&options.config.HistoryFile, "H", options.config.HistoryFile, "set path to history file. Set to '' to disable history.")
+	flagSet.Var(&options.HideInputPane, options.HideInputPane.Flag(), "hide input (left) viewing pane")
+	flagSet.Var(&options.JQCommand, options.JQCommand.Flag(), "name of or path to jq binary to use")
+	flagSet.Var(&options.HistoryFile, options.HistoryFile.Flag(), "set path to history file. Set to '' to disable history.")
 
 	filterFile := flagSet.String("f", "", "load the filter from a `file`")
 	version := flagSet.Bool("V", false, "print version and exit")
@@ -284,20 +168,8 @@ func newFlagSet(name string, options *Options, output io.Writer) (*flag.FlagSet,
 	return flagSet, filterFile, version
 }
 
-func parseArgs() (Options, string, []string) {
-	configPath, err := DefaultConfigPath()
-	if err != nil {
-		log.Fatalf("error getting default config path: %s\n", err)
-	}
-
-	cfg, err := NewConfig(configPath)
-	if err != nil {
-		log.Fatalf("error loading config file %q: %s\n", configPath, err)
-	}
-
-	options := Options{config: cfg}
-
-	flagSet, filterFile, version := newFlagSet("ijq", &options, os.Stderr)
+func parseArgs(options *options.Options) (string, []string) {
+	flagSet, filterFile, version := newFlagSet("ijq", options, os.Stderr)
 	if err := flagSet.Parse(os.Args[1:]); err != nil {
 		log.Fatalln(err)
 	}
@@ -319,15 +191,15 @@ func parseArgs() (Options, string, []string) {
 		}
 
 		filter = string(contents)
-	} else if len(args) > 1 || (len(args) > 0 && (!stdinIsTty || options.nullInput)) {
+	} else if len(args) > 1 || (len(args) > 0 && (!stdinIsTty || bool(options.NullInput))) {
 		filter = args[0]
 		args = args[1:]
-	} else if len(args) == 0 && stdinIsTty && !options.nullInput {
+	} else if len(args) == 0 && stdinIsTty && !bool(options.NullInput) {
 		flagSet.Usage()
 		os.Exit(1)
 	}
 
-	return options, filter, args
+	return filter, args
 }
 
 func scrollHalfPage(tv *tview.TextView, up bool) {
@@ -489,7 +361,6 @@ func createApp(doc Document) *tview.Application {
 	inputView := tview.NewTextView()
 	inputView.SetDynamicColors(true).SetWrap(false).SetBorder(true)
 	inputPane := pane{tv: inputView}
-	isInputPaneHidden := doc.options.config.HideInputPane
 
 	outputView := tview.NewTextView()
 	outputView.SetDynamicColors(true).SetWrap(false).SetBorder(true)
@@ -501,13 +372,13 @@ func createApp(doc Document) *tview.Application {
 	helpView := tview.NewTextView()
 	helpView.SetDynamicColors(true)
 	helpView.SetTextAlign(tview.AlignCenter)
-	helpView.SetText(buildMainHelpText(doc.options.config.Keymap))
+	helpView.SetText(buildMainHelpText(doc.config.Keymap))
 
 	var filterHistory history
-	filterHistory.Init(doc.options.config.HistoryFile)
+	filterHistory.Init(string(doc.options.HistoryFile))
 	// If submit-filter includes Enter, we need SetDoneFunc to handle submission so
 	// Enter still works with autocomplete selection.
-	submitOnEnter := doc.options.config.Keymap.SubmitFilter.Matches(
+	submitOnEnter := doc.config.Keymap.SubmitFilter.Matches(
 		tcell.NewEventKey(tcell.KeyEnter, ' ', tcell.ModNone),
 	)
 	submitFilter := func() {
@@ -519,10 +390,10 @@ func createApp(doc Document) *tview.Application {
 		// stdout is a tty, respecting options set by
 		// the user
 		isTty := term.IsTerminal(int(os.Stdout.Fd()))
-		if !isTty && !doc.options.forceColor {
-			doc.options.monochrome = true
-		} else if isTty && !doc.options.monochrome {
-			doc.options.forceColor = true
+		if !isTty && !bool(doc.options.ForceColor) {
+			doc.options.Monochrome = true
+		} else if isTty && !bool(doc.options.Monochrome) {
+			doc.options.ForceColor = true
 		}
 
 		filterHistory.Add(doc.filter)
@@ -724,7 +595,7 @@ func createApp(doc Document) *tview.Application {
 	}()
 
 	inputPaneProportion := 1
-	if isInputPaneHidden {
+	if doc.options.HideInputPane {
 		inputPaneProportion = 0
 	}
 	viewFlex := tview.NewFlex().
@@ -764,10 +635,7 @@ func createApp(doc Document) *tview.Application {
 	showHistoryNotice := func(message string) {
 		historyNotice.SetText(message)
 
-		width := tview.TaggedStringWidth(message) + 4
-		if width < 24 {
-			width = 24
-		}
+		width := max(tview.TaggedStringWidth(message)+4, 24)
 
 		historyNoticeContainer.SetColumns(0, width, 0)
 		historyNoticeContainer.SetRows(0, 3, 0)
@@ -786,22 +654,26 @@ func createApp(doc Document) *tview.Application {
 	}
 
 	overlayPopup := overlay.NewController(app, pages, "overlay", overlay.Callbacks{
-		ConfigureRows: func() []string {
-			return overlay.ConfigureRows(func(flag string) bool {
-				return runtimeOptionValue(&doc.options, flag)
-			})
-		},
-		ToggleConfigureRow: func(index int) {
-			queueDocumentUpdate(func(next *Document) {
-				overlay.ToggleConfigureOption(index,
-					func(flag string) bool {
-						return runtimeOptionValue(&next.options, flag)
-					},
-					func(flag string, value bool) {
-						setRuntimeOptionValue(&next.options, flag, value)
-					},
-				)
-			})
+		ConfigureRows: func() []string { return overlay.ConfigureRows(doc.options) },
+		ToggleConfigureRow: func(option options.Option) {
+			switch option.(type) {
+			case *options.HideInputPane:
+				// This option only affects the ijq UI, not jq
+				// itself, so we handle it differently
+				doc.options.HideInputPane = !doc.options.HideInputPane
+				if doc.options.HideInputPane {
+					if inputView.HasFocus() {
+						app.SetFocus(outputView)
+					}
+					viewFlex.ResizeItem(inputView, 0, 0)
+				} else {
+					viewFlex.ResizeItem(inputView, 0, 1)
+				}
+			default:
+				queueDocumentUpdate(func(next *Document) {
+					next.options.Toggle(option)
+				})
+			}
 		},
 		SaveCurrentFilterToHistory: func() (string, error) {
 			status, _, err := saveCurrentFilterToHistory()
@@ -834,7 +706,7 @@ func createApp(doc Document) *tview.Application {
 			filterInput.SetText(expression)
 		},
 		ActiveKeybindings: func() []overlay.KeybindingEntry {
-			return activeKeybindingEntries(doc.options.config.Keymap)
+			return activeKeybindingEntries(doc.config.Keymap)
 		},
 	})
 
@@ -842,7 +714,7 @@ func createApp(doc Document) *tview.Application {
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		focused := app.GetFocus()
-		activeKeymaps := doc.options.config.Keymap
+		activeKeymaps := doc.config.Keymap
 
 		if isHistoryNoticeOpen {
 			closeHistoryNotice()
@@ -963,7 +835,7 @@ func createApp(doc Document) *tview.Application {
 
 		if activeKeymaps.FocusInputPaneUp.Matches(event) {
 			if filterInput.HasFocus() {
-				if !isInputPaneHidden {
+				if !doc.options.HideInputPane {
 					app.SetFocus(inputView)
 				} else {
 					app.SetFocus(outputView)
@@ -973,7 +845,7 @@ func createApp(doc Document) *tview.Application {
 		}
 
 		if activeKeymaps.FocusInputPaneLeft.Matches(event) {
-			if !isInputPaneHidden {
+			if !doc.options.HideInputPane {
 				app.SetFocus(inputView)
 				return nil
 			}
@@ -1022,18 +894,18 @@ func createApp(doc Document) *tview.Application {
 		}
 
 		if activeKeymaps.ToggleInputPane.Matches(event) {
-			if !isInputPaneHidden {
+			if !doc.options.HideInputPane {
 				if inputView.HasFocus() {
 					app.SetFocus(outputView)
 				}
 
 				viewFlex.ResizeItem(inputView, 0, 0)
-				isInputPaneHidden = true
+				doc.options.HideInputPane = true
 				return nil
 			}
 
 			viewFlex.ResizeItem(inputView, 0, 1)
-			isInputPaneHidden = false
+			doc.options.HideInputPane = false
 			return nil
 		}
 
@@ -1090,15 +962,32 @@ func main() {
 	// Remove log prefix
 	log.SetFlags(0)
 
-	options, filter, args := parseArgs()
-
-	if _, err := exec.LookPath(options.config.JQCommand); err != nil {
-		log.Fatalf("%s is not installed or could not be found: %s\n", options.config.JQCommand, err)
+	configPath, err := DefaultConfigPath()
+	if err != nil {
+		log.Fatalf("error getting default config path: %s\n", err)
 	}
 
-	doc := Document{filter: filter, options: options}
+	config, err := NewConfig(configPath)
+	if err != nil {
+		log.Fatalf("error loading config file %q: %s\n", configPath, err)
+	}
 
-	if !options.nullInput {
+	options := options.Options{
+		HistoryFile:   config.HistoryFile,
+		JQCommand:     config.JQCommand,
+		HideInputPane: config.HideInputPane,
+		LibraryPaths:  config.LibraryPaths,
+	}
+
+	filter, args := parseArgs(&options)
+
+	if _, err := exec.LookPath(string(options.JQCommand)); err != nil {
+		log.Fatalf("%s is not installed or could not be found: %s\n", options.JQCommand, err)
+	}
+
+	doc := Document{filter: filter, options: options, config: config}
+
+	if !options.NullInput {
 		var in io.Reader = os.Stdin
 		if len(args) > 0 {
 			var files []io.Reader

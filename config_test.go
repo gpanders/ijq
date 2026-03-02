@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"codeberg.org/gpanders/ijq/internal/options"
 	"github.com/gdamore/tcell/v2"
 	"github.com/stretchr/testify/assert"
 )
@@ -38,9 +39,9 @@ func TestLoadConfigMissingFile(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Ensure that config has default values when no config file exists
-	assert.Equal(t, filepath.Join(tmp, "ijq", "history"), cfg.HistoryFile)
-	assert.Equal(t, "jq", cfg.JQCommand)
-	assert.False(t, cfg.HideInputPane)
+	assert.Equal(t, filepath.Join(tmp, "ijq", "history"), string(cfg.HistoryFile))
+	assert.Equal(t, "jq", string(cfg.JQCommand))
+	assert.False(t, bool(cfg.HideInputPane))
 }
 
 func TestLoadConfig(t *testing.T) {
@@ -64,10 +65,10 @@ keymaps {
 
 	cfg, err := NewConfig(path)
 	assert.NoError(t, err)
-	assert.Equal(t, "", cfg.HistoryFile)
-	assert.Equal(t, "/usr/local/bin/jq", cfg.JQCommand)
-	assert.True(t, cfg.HideInputPane)
-	assert.Equal(t, LibraryPaths{"/tmp/modules", "/opt/jq/modules"}, cfg.LibraryPaths)
+	assert.Equal(t, "", string(cfg.HistoryFile))
+	assert.Equal(t, "/usr/local/bin/jq", string(cfg.JQCommand))
+	assert.True(t, bool(cfg.HideInputPane))
+	assert.Equal(t, options.LibraryPaths{"/tmp/modules", "/opt/jq/modules"}, cfg.LibraryPaths)
 
 	assert.Equal(t, KeyBindings{{key: tcell.KeyCtrlT}}, cfg.Keymap.ToggleInputPane)
 	assert.Equal(t, KeyBindings{{key: tcell.KeyRune, rune: 'h', mods: tcell.ModAlt}}, cfg.Keymap.SaveFilterHistory)

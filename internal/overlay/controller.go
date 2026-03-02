@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"codeberg.org/gpanders/ijq/internal/options"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -51,7 +52,7 @@ type KeybindingEntry struct {
 
 type Callbacks struct {
 	ConfigureRows              func() []string
-	ToggleConfigureRow         func(index int)
+	ToggleConfigureRow         func(option options.Option)
 	SaveCurrentFilterToHistory func() (status string, err error)
 	LoadHistoryEntries         func() []string
 	DeleteHistoryEntryAt       func(index int) error
@@ -461,7 +462,11 @@ func (c *Controller) toggleConfigure(index int) {
 		return
 	}
 
-	c.callbacks.ToggleConfigureRow(index)
+	if index < 0 || index >= len(configureRows) {
+		return
+	}
+
+	c.callbacks.ToggleConfigureRow(configureRows[index])
 	c.refreshConfigure(index)
 }
 
