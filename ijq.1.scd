@@ -6,7 +6,7 @@ ijq - interactive jq
 
 # SYNOPSIS
 
-*ijq* [*-cnsrRMSV*] [*-f* _file_] [_filter_] [_files ..._]
+*ijq* [*-cnsrjaRMCSV*] [*-f* _file_] [_filter_] [_files ..._]
 
 # DESCRIPTION
 
@@ -43,6 +43,12 @@ All of the options mirror their counterparts in *jq*. The options are:
 	for using *ijq* in a pipeline with other programs that expect normal
 	string input.
 
+*-j*
+	Implies *-r* and outputs without a trailing newline after each result.
+
+*-a*
+	Output strings by using only ASCII characters and escape sequences.
+
 *-R*
 	Don't parse the input as JSON, instead passing each line of input to the
 	filter as a string. If combined with *-s* then the entire input is
@@ -50,6 +56,9 @@ All of the options mirror their counterparts in *jq*. The options are:
 
 *-M*
 	Disable colored output.
+
+*-C*
+	Force colored output.
 
 *-S*
 	Output the fields of each object with the fields in sorted order.
