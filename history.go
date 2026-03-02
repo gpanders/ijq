@@ -84,18 +84,21 @@ func (h *history) AddIfMissing(expression string) (bool, error) {
 		return false, nil
 	}
 
-	h.Items = append(h.Items, expression)
-
 	file, err := h.openFile()
 	if err != nil {
 		return false, fmt.Errorf("error opening history for writing: %w", err)
 	}
 
-	fmt.Fprintln(file, expression)
+	if _, err = fmt.Fprintln(file, expression); err != nil {
+		file.Close()
+		return false, fmt.Errorf("error writing history file: %w", err)
+	}
 
 	if err = file.Close(); err != nil {
 		return false, fmt.Errorf("error closing history file: %w", err)
 	}
+
+	h.Items = append(h.Items, expression)
 
 	return true, nil
 }
@@ -105,15 +108,19 @@ func (h *history) DeleteAt(index int) error {
 		return fmt.Errorf("history index out of range")
 	}
 
-	h.Items = append(h.Items[:index], h.Items[index+1:]...)
+	nextItems := append([]string(nil), h.Items[:index]...)
+	nextItems = append(nextItems, h.Items[index+1:]...)
 
 	if h.path == "" {
+		h.Items = nextItems
 		return nil
 	}
 
-	if err := h.rewrite(); err != nil {
+	if err := h.rewrite(nextItems); err != nil {
 		return fmt.Errorf("error rewriting history: %w", err)
 	}
+
+	h.Items = nextItems
 
 	return nil
 }
@@ -136,7 +143,7 @@ func (h *history) Entries() []string {
 	return append([]string(nil), h.Items...)
 }
 
-func (h *history) rewrite() (rerr error) {
+func (h *history) rewrite(items []string) (rerr error) {
 	if err := os.MkdirAll(filepath.Dir(h.path), os.ModePerm); err != nil {
 		return err
 	}
@@ -154,7 +161,7 @@ func (h *history) rewrite() (rerr error) {
 		}
 	}()
 
-	for _, item := range h.Items {
+	for _, item := range items {
 		if _, err := io.WriteString(tmpFile, item+"\n"); err != nil {
 			return err
 		}
