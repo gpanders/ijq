@@ -30,6 +30,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"codeberg.org/gpanders/ijq/internal/options"
 	"codeberg.org/gpanders/ijq/internal/overlay"
@@ -415,13 +416,19 @@ func createApp(doc Document) *tview.Application {
 	// Initialize pending to true so that the output pane will update with the initial filter
 	pending := true
 
+	// Create a cancellable context when writing to the output view. If the
+	// filter input changes, the context is cancelled and the process is
+	// killed. This must be set before filterInput is created because
+	// tview's SetAutocompleteFunc triggers an initial autocomplete that
+	// spawns a goroutine reading doc.
+	doc.ctx, cancel = context.WithCancel(context.Background())
+
 	filterMap := make(map[string][]string)
 	queueDocumentUpdate := func(update func(*Document)) {
-		cancel()
-
 		mutex.Lock()
 		defer mutex.Unlock()
 
+		cancel()
 		update(&doc)
 		pending = true
 		cond.Signal()
@@ -483,8 +490,12 @@ func createApp(doc Document) *tview.Application {
 						filt = "keys"
 					}
 
+					mutex.Lock()
+					filtered := doc.WithFilter("[" + filt + "] | unique | first")
+					mutex.Unlock()
+
 					var buf bytes.Buffer
-					_, err := doc.WithFilter("[" + filt + "] | unique | first").WriteTo(&buf)
+					_, err := filtered.WriteTo(&buf)
 					if err != nil {
 						return
 					}
@@ -552,8 +563,10 @@ func createApp(doc Document) *tview.Application {
 	// is ever displayed in the UI. But for large inputs (which will take
 	// longer to calculate the correct value), this is a better initial
 	// guess.
-	inputLineCount := 10000
-	outputLineCount := 10000
+	var inputLineCount atomic.Int64
+	inputLineCount.Store(10000)
+	var outputLineCount atomic.Int64
+	outputLineCount.Store(10000)
 
 	// Process document with empty filter to populate input view
 	go func() {
@@ -563,13 +576,8 @@ func createApp(doc Document) *tview.Application {
 			return
 		}
 
-		inputLineCount = strings.Count(inputView.GetText(false), "\n")
+		inputLineCount.Store(int64(strings.Count(inputView.GetText(false), "\n")))
 	}()
-
-	// Create a cancellable context when writing to the output view. If the
-	// filter input changes, the context is cancelled and the process is
-	// killed.
-	doc.ctx, cancel = context.WithCancel(context.Background())
 
 	go func() {
 		for {
@@ -580,10 +588,13 @@ func createApp(doc Document) *tview.Application {
 
 			d := doc
 			pending = false
-			cond.L.Unlock()
 
-			// Re-initialize the cancellable context
+			// Re-initialize the cancellable context while still holding the
+			// lock so that concurrent calls to cancel() in
+			// queueDocumentUpdate always operate on a fully constructed
+			// context.
 			d.ctx, cancel = context.WithCancel(context.Background())
+			cond.L.Unlock()
 
 			_, err := d.WriteTo(&outputPane)
 			if err != nil {
@@ -596,7 +607,7 @@ func createApp(doc Document) *tview.Application {
 					}
 				}
 			} else {
-				outputLineCount = strings.Count(outputView.GetText(false), "\n")
+				outputLineCount.Store(int64(strings.Count(outputView.GetText(false), "\n")))
 			}
 
 			app.Draw()
@@ -669,8 +680,11 @@ func createApp(doc Document) *tview.Application {
 			case *options.HideInputPane:
 				// This option only affects the ijq UI, not jq
 				// itself, so we handle it differently
+				mutex.Lock()
 				doc.options.HideInputPane = !doc.options.HideInputPane
-				if doc.options.HideInputPane {
+				hidden := doc.options.HideInputPane
+				mutex.Unlock()
+				if hidden {
 					if inputView.HasFocus() {
 						app.SetFocus(outputView)
 					}
@@ -903,18 +917,26 @@ func createApp(doc Document) *tview.Application {
 		}
 
 		if activeKeymaps.ToggleInputPane.Matches(event) {
-			if !doc.options.HideInputPane {
+			mutex.Lock()
+			hidden := doc.options.HideInputPane
+			mutex.Unlock()
+
+			if !hidden {
 				if inputView.HasFocus() {
 					app.SetFocus(outputView)
 				}
 
 				viewFlex.ResizeItem(inputView, 0, 0)
+				mutex.Lock()
 				doc.options.HideInputPane = true
+				mutex.Unlock()
 				return nil
 			}
 
 			viewFlex.ResizeItem(inputView, 0, 1)
+			mutex.Lock()
 			doc.options.HideInputPane = false
+			mutex.Unlock()
 			return nil
 		}
 
@@ -948,8 +970,8 @@ func createApp(doc Document) *tview.Application {
 			tty.Write([]byte("\x1b[?2026h"))
 		}
 
-		updateScrollIndicator("Input", inputLineCount, inputView)
-		updateScrollIndicator("Output", outputLineCount, outputView)
+		updateScrollIndicator("Input", int(inputLineCount.Load()), inputView)
+		updateScrollIndicator("Output", int(outputLineCount.Load()), outputView)
 
 		return false
 	})
