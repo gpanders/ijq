@@ -56,7 +56,9 @@ type Document struct {
 }
 
 func (d Document) WithFilter(filter string) Document {
-	return Document{input: d.input, filter: filter, options: d.options, ctx: context.Background()}
+	d.filter = filter
+	d.ctx = context.Background()
+	return d
 }
 
 func (d *Document) ReadFrom(r io.Reader) (n int64, err error) {

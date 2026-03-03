@@ -64,6 +64,32 @@ func TestDocumentWriteTo(t *testing.T) {
 	assert.Equal(t, testMsg, buffer.String())
 }
 
+func TestDocumentWithFilterPreservesFields(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cfg := DefaultConfig()
+	opts := options.Options{
+		CompactOutput: true,
+		JQCommand:     "jq",
+	}
+	original := Document{
+		input:   `{"foo":1}`,
+		filter:  ".",
+		options: opts,
+		config:  cfg,
+		ctx:     ctx,
+	}
+
+	next := original.WithFilter(".foo")
+
+	assert.Equal(t, original.input, next.input)
+	assert.Equal(t, ".foo", next.filter)
+	assert.Equal(t, original.options, next.options)
+	assert.Equal(t, original.config, next.config)
+	assert.NotNil(t, next.ctx)
+}
+
 func TestDocumentExecError(t *testing.T) {
 	testMsg := "hello world"
 	testReader := strings.NewReader(testMsg)
