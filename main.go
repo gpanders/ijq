@@ -558,7 +558,8 @@ func createApp(doc Document) *tview.Application {
 	go func() {
 		_, err := doc.WithFilter(".").WriteTo(&inputPane)
 		if err != nil {
-			log.Fatalf("Error while running jq on input: %s\n", err)
+			log.Printf("Error while running jq on input: %s\n", err)
+			return
 		}
 
 		inputLineCount = strings.Count(inputView.GetText(false), "\n")
