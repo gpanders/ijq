@@ -21,13 +21,16 @@ package main
 import (
 	"bytes"
 	"context"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"codeberg.org/gpanders/ijq/internal/options"
 	"github.com/gdamore/tcell/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDocumentReadFrom(t *testing.T) {
@@ -149,4 +152,73 @@ func TestBuildMainHelpTextUsesConfiguredBindings(t *testing.T) {
 	assert.Contains(t, help, "Alt-m")
 	assert.Contains(t, help, "Ctrl-C")
 	assert.Contains(t, help, "Ctrl-s")
+}
+
+func TestParseArgsLoadsFilterFromFile(t *testing.T) {
+	filterFile := filepath.Join(t.TempDir(), "filter.jq")
+	require.NoError(t, os.WriteFile(filterFile, []byte(".foo\n"), 0o644))
+
+	oldArgs := os.Args
+	os.Args = []string{"ijq", "-f", filterFile, "input.json"}
+	t.Cleanup(func() {
+		os.Args = oldArgs
+	})
+
+	opts := options.Options{}
+	filter, args := parseArgs(&opts)
+
+	assert.Equal(t, ".foo\n", filter)
+	assert.Equal(t, []string{"input.json"}, args)
+}
+
+func TestParseArgsTreatsFirstArgAsFilterWithNullInput(t *testing.T) {
+	oldArgs := os.Args
+	os.Args = []string{"ijq", ".items[]"}
+	t.Cleanup(func() {
+		os.Args = oldArgs
+	})
+
+	opts := options.Options{NullInput: true}
+	filter, args := parseArgs(&opts)
+
+	assert.Equal(t, ".items[]", filter)
+	assert.Empty(t, args)
+}
+
+func TestParseArgsTreatsFirstArgAsFilterWhenMultiplePositionals(t *testing.T) {
+	oldArgs := os.Args
+	os.Args = []string{"ijq", ".foo", "file1.json", "file2.json"}
+	t.Cleanup(func() {
+		os.Args = oldArgs
+	})
+
+	opts := options.Options{}
+	filter, args := parseArgs(&opts)
+
+	assert.Equal(t, ".foo", filter)
+	assert.Equal(t, []string{"file1.json", "file2.json"}, args)
+}
+
+func TestParseArgsVersionFlagPrintsAndExits(t *testing.T) {
+	if os.Getenv("IJQ_PARSEARGS_VERSION_HELPER") == "1" {
+		oldArgs := os.Args
+		oldVersion := Version
+		defer func() {
+			os.Args = oldArgs
+			Version = oldVersion
+		}()
+
+		Version = "test-version"
+		os.Args = []string{"ijq", "-V"}
+		opts := options.Options{}
+		parseArgs(&opts)
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestParseArgsVersionFlagPrintsAndExits")
+	cmd.Env = append(os.Environ(), "IJQ_PARSEARGS_VERSION_HELPER=1")
+
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err)
+	assert.Contains(t, string(out), "ijq test-version")
 }
