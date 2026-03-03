@@ -15,11 +15,22 @@ type Option interface {
 }
 
 func (o *Options) Toggle(option Option) {
+	optionType := reflect.TypeOf(option)
+	if optionType == nil {
+		return
+	}
+
 	o.Each(func(opt Option) {
-		if reflect.TypeOf(option) == reflect.TypeOf(opt) {
-			value := reflect.ValueOf(opt).Elem()
-			value.SetBool(!value.Bool())
+		if optionType != reflect.TypeOf(opt) {
+			return
 		}
+
+		value := reflect.ValueOf(opt).Elem()
+		if !value.IsValid() || value.Kind() != reflect.Bool {
+			return
+		}
+
+		value.SetBool(!value.Bool())
 	})
 }
 

@@ -59,3 +59,19 @@ func TestSetOnLibraryPathsOption(t *testing.T) {
 	assert.NoError(t, paths.Set("bar"))
 	assert.EqualValues(t, []string{"foo", "bar"}, paths)
 }
+
+func TestToggleDoesNotPanicForNonBoolOptions(t *testing.T) {
+	opts := Options{
+		CompactOutput: true,
+		LibraryPaths:  LibraryPaths{"foo"},
+	}
+
+	assert.NotPanics(t, func() {
+		opts.Toggle(&opts.LibraryPaths)
+	})
+
+	assert.Equal(t, LibraryPaths{"foo"}, opts.LibraryPaths)
+
+	opts.Toggle(&opts.CompactOutput)
+	assert.False(t, bool(opts.CompactOutput))
+}
