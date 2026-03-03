@@ -2,14 +2,14 @@ steps:
   test:
     when:
       - event: [push, pull_request, tag]
-    image: golang
+    image: golang:1.26
     commands:
       - go test -v -coverprofile=./cover.out ./...
 
   build:
     when:
       - event: tag
-    image: golang:alpine
+    image: golang:1:26-alpine
     environment:
       CGO_ENABLED: "0"
     commands:
