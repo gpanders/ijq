@@ -8,7 +8,7 @@ endif
 bindir = $(prefix)/bin
 mandir = $(prefix)/share/man
 
-SRCS = main.go history.go
+SRCS = $(filter-out %_test.go,$(wildcard *.go))
 
 VERSION = 1.2.0
 
@@ -26,7 +26,7 @@ ijq: $(SRCS)
 
 .PHONY: test
 test:
-	go test -v -coverprofile=./cover.out .
+	go test -v -coverprofile=./cover.out ./...
 
 .PHONY: viewcover
 viewcover:
