@@ -407,8 +407,9 @@ func createApp(doc Document) *tview.Application {
 
 	var (
 		mutex  sync.Mutex
-		cancel context.CancelFunc
+		cancel context.CancelFunc = func() {}
 	)
+
 	cond := sync.NewCond(&mutex)
 
 	// Initialize pending to true so that the output pane will update with the initial filter
