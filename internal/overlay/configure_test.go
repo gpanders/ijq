@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"codeberg.org/gpanders/ijq/internal/options"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,10 +32,10 @@ func TestConfigureRowsExcludesNonBoolOptions(t *testing.T) {
 
 func TestConfigureSizeMatchesConfigureRows(t *testing.T) {
 	maxWidth := len("Configure")
-	for _, row := range configureRows {
-		maxWidth = max(maxWidth, len(row.String()))
+	for _, row := range ConfigureRows(options.Options{}) {
+		maxWidth = max(maxWidth, len(row))
 	}
 
 	assert.Equal(t, maxWidth, configureSize.Width)
-	assert.Equal(t, len(configureRows), configureSize.Height)
+	assert.Equal(t, len(configureRows)+1, configureSize.Height)
 }
