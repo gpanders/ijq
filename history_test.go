@@ -22,6 +22,7 @@ import (
 	"math/rand"
 	"os"
 	"path"
+	"runtime"
 	"strconv"
 	"testing"
 	"time"
@@ -215,6 +216,27 @@ func TestHistoryDeleteAtInvalidIndex(t *testing.T) {
 
 	assert.Error(t, h.DeleteAt(-1))
 	assert.Error(t, h.DeleteAt(2))
+}
+
+func TestHistoryDeleteAtRewriteSetsFilePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("windows does not preserve unix permission bits")
+	}
+
+	histFile := path.Join(t.TempDir(), "history")
+	err := os.WriteFile(histFile, []byte("one\ntwo\n"), 0o600)
+	assert.NoError(t, err)
+
+	var h history
+	err = h.Init(histFile)
+	assert.NoError(t, err)
+
+	err = h.DeleteAt(0)
+	assert.NoError(t, err)
+
+	info, err := os.Stat(histFile)
+	assert.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o644), info.Mode().Perm())
 }
 
 func TestHistoryEntriesReturnsCopy(t *testing.T) {

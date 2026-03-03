@@ -175,7 +175,9 @@ func (h *history) rewrite(items []string) (rerr error) {
 		return err
 	}
 
-	os.Chmod(tmpName, 0o644)
+	if err := os.Chmod(h.path, 0o644); err != nil {
+		return err
+	}
 
 	return nil
 }
