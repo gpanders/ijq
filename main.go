@@ -495,10 +495,15 @@ func createApp(doc Document) *tview.Application {
 
 					entries := keys[:0]
 					for _, k := range keys {
-						first := strings.ToLower(string(k[0]))
-						if strings.ContainsAny(k, specialChars) || !strings.Contains(alphabet, first) {
-							k = `"` + k + `"`
+						if k == "" {
+							k = `""`
+						} else {
+							first := strings.ToLower(string(k[0]))
+							if strings.ContainsAny(k, specialChars) || !strings.Contains(alphabet, first) {
+								k = `"` + k + `"`
+							}
 						}
+
 						entries = append(entries, prefix+"."+k)
 					}
 
