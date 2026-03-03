@@ -1,0 +1,48 @@
+steps:
+  test:
+    when:
+      - event: [push, pull_request, tag]
+    image: golang
+    commands:
+      - go test -v -coverprofile=./cover.out ./...
+
+  build:
+    when:
+      - event: tag
+    image: golang:alpine
+    environment:
+      CGO_ENABLED: "0"
+    commands:
+      - apk add --no-cache make scdoc
+      - |
+        version=$(echo "$CI_COMMIT_TAG" | tr -d 'v')
+        mkdir ijq-"$version"
+
+        build() {
+          os="$1"
+          arch="$2"
+          make GOOS="$os" GOARCH="$arch" clean all
+          cp ijq ijq.1 COPYING ijq-"$version"/
+
+          if [ "$os" = windows ]; then
+            mv ijq-"$version"/ijq ijq-"$version"/ijq.exe
+          fi
+
+          tar czf ijq-"$version"-"$os"-"$arch".tar.gz ijq-"$version"
+        }
+
+        build darwin amd64
+        build darwin arm64
+        build linux amd64
+        build linux arm64
+        build windows amd64
+
+  release:
+    when:
+      - event: tag
+    image: woodpeckerci/plugin-release
+    settings:
+      files:
+        - "ijq-*.tar.gz"
+      api_key:
+        from_secret: codeberg_token
