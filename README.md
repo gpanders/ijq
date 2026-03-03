@@ -1,6 +1,8 @@
 ijq
 ===
 
+[![CI status](https://ci.codeberg.org/api/badges/14932/status.svg)](https://ci.codeberg.org/repos/14932)
+
 Interactive `jq` tool. Like [jqplay] for the commandline.
 
 [jqplay]: https://jqplay.org
