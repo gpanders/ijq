@@ -27,10 +27,11 @@ import (
 	"strings"
 	"testing"
 
-	"codeberg.org/gpanders/ijq/internal/options"
 	"github.com/gdamore/tcell/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"codeberg.org/gpanders/ijq/internal/options"
 )
 
 func TestDocumentReadFrom(t *testing.T) {

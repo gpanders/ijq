@@ -5,9 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"codeberg.org/gpanders/ijq/internal/options"
 	"github.com/gdamore/tcell/v2"
 	"github.com/stretchr/testify/assert"
+
+	"codeberg.org/gpanders/ijq/internal/options"
 )
 
 func TestDefaultConfigPathUsesXDGConfigHome(t *testing.T) {

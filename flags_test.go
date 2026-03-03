@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"testing"
 
-	"codeberg.org/gpanders/ijq/internal/options"
 	"github.com/stretchr/testify/assert"
+
+	"codeberg.org/gpanders/ijq/internal/options"
 )
 
 func TestUsageHidesLegacyFlags(t *testing.T) {

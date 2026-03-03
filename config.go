@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 
 	"codeberg.org/emersion/go-scfg"
+
 	"codeberg.org/gpanders/ijq/internal/options"
 )
 

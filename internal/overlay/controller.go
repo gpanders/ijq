@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"codeberg.org/gpanders/ijq/internal/options"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+
+	"codeberg.org/gpanders/ijq/internal/options"
 )
 
 const (

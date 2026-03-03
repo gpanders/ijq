@@ -3,10 +3,11 @@ package overlay
 import (
 	"testing"
 
-	"codeberg.org/gpanders/ijq/internal/options"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/stretchr/testify/assert"
+
+	"codeberg.org/gpanders/ijq/internal/options"
 )
 
 func newOpenController(t *testing.T, callbacks Callbacks) *Controller {

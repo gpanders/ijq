@@ -4,8 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"codeberg.org/gpanders/ijq/internal/options"
 	"github.com/stretchr/testify/assert"
+
+	"codeberg.org/gpanders/ijq/internal/options"
 )
 
 func TestConfigureRowsContainsOnlyBoolOptionsInStructOrder(t *testing.T) {

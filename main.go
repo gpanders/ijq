@@ -32,12 +32,12 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"codeberg.org/gpanders/ijq/internal/options"
-	"codeberg.org/gpanders/ijq/internal/overlay"
-
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"golang.org/x/term"
+
+	"codeberg.org/gpanders/ijq/internal/options"
+	"codeberg.org/gpanders/ijq/internal/overlay"
 )
 
 // Special characters that, if present in a JSON key, need to be quoted in the

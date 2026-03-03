@@ -9,8 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"codeberg.org/gpanders/ijq/internal/options"
 	"github.com/gdamore/tcell/v2"
+
+	"codeberg.org/gpanders/ijq/internal/options"
 )
 
 func TestAppRace(t *testing.T) {
