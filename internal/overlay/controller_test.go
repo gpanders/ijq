@@ -104,6 +104,56 @@ func TestHandleInputHistoryFilterCancelRestoresQuery(t *testing.T) {
 	assert.True(t, controller.historyFilterVisible)
 }
 
+func TestHandleInputHistoryFilterAllowsTypingNavigationKeys(t *testing.T) {
+	controller := newOpenController(t, Callbacks{
+		LoadHistoryEntries: func() []string {
+			return []string{".foo", ".bar"}
+		},
+	})
+
+	controller.rootMenu.SetCurrentItem(2)
+	controller.HandleInput(keyEvent(tcell.KeyEnter))
+	controller.HandleInput(runeEvent('/'))
+	assert.Equal(t, modeHistoryFilter, controller.mode)
+
+	event := controller.HandleInput(runeEvent('j'))
+	if assert.NotNil(t, event) {
+		assert.Equal(t, tcell.KeyRune, event.Key())
+		assert.Equal(t, 'j', event.Rune())
+	}
+
+	event = controller.HandleInput(runeEvent('k'))
+	if assert.NotNil(t, event) {
+		assert.Equal(t, tcell.KeyRune, event.Key())
+		assert.Equal(t, 'k', event.Rune())
+	}
+
+	event = controller.HandleInput(runeEvent('q'))
+	if assert.NotNil(t, event) {
+		assert.Equal(t, tcell.KeyRune, event.Key())
+		assert.Equal(t, 'q', event.Rune())
+	}
+
+	assert.True(t, controller.IsOpen())
+}
+
+func TestHandleInputHistoryFilterCancelEventIsConsumed(t *testing.T) {
+	controller := newOpenController(t, Callbacks{
+		LoadHistoryEntries: func() []string {
+			return []string{".foo", ".bar"}
+		},
+	})
+
+	controller.rootMenu.SetCurrentItem(2)
+	controller.HandleInput(keyEvent(tcell.KeyEnter))
+	controller.HandleInput(runeEvent('/'))
+	assert.Equal(t, modeHistoryFilter, controller.mode)
+
+	event := controller.HandleInput(keyEvent(tcell.KeyEsc))
+	assert.Nil(t, event)
+	assert.Equal(t, modeHistoryList, controller.mode)
+}
+
 func TestHandleInputHistoryDeleteConfirmFlow(t *testing.T) {
 	entries := []string{"one", "two"}
 	deletedIndex := -1

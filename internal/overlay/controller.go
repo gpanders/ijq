@@ -34,6 +34,15 @@ const (
 	modeKeybindings
 )
 
+func (m mode) IsTextInput() bool {
+	switch m {
+	case modeHistoryFilter:
+		return true
+	default:
+		return false
+	}
+}
+
 const (
 	historyHelpText    = "[::d]Enter[::-] [::b]select[::-]   [::d]/[::-] [::b]filter[::-]   [::d]X[::-] [::b]delete[::-]"
 	rootHelpText       = "[::d]Esc/Ctrl-C[::-] [::b]close[::-]   [::d]Space/Enter[::-] [::b]select[::-]"
@@ -266,18 +275,20 @@ func (c *Controller) HandleInput(event *tcell.EventKey) *tcell.EventKey {
 		return event
 	}
 
-	// Navigation keymaps that apply to all modes
-	switch event.Key() {
-	case tcell.KeyRune:
-		if event.Modifiers() == tcell.ModNone {
-			switch event.Rune() {
-			case 'j':
-				return tcell.NewEventKey(tcell.KeyDown, ' ', tcell.ModNone)
-			case 'k':
-				return tcell.NewEventKey(tcell.KeyUp, ' ', tcell.ModNone)
-			case 'q':
-				c.Close()
-				return nil
+	// Navigation keymaps that apply to all (non-text input) modes
+	if !c.mode.IsTextInput() {
+		switch event.Key() {
+		case tcell.KeyRune:
+			if event.Modifiers() == tcell.ModNone {
+				switch event.Rune() {
+				case 'j':
+					return tcell.NewEventKey(tcell.KeyDown, ' ', tcell.ModNone)
+				case 'k':
+					return tcell.NewEventKey(tcell.KeyUp, ' ', tcell.ModNone)
+				case 'q':
+					c.Close()
+					return nil
+				}
 			}
 		}
 	}
@@ -357,6 +368,7 @@ func (c *Controller) HandleInput(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyCtrlC, tcell.KeyEsc:
 			c.endHistoryFilterEdit(true)
+			return nil
 		case tcell.KeyEnter:
 			c.endHistoryFilterEdit(false)
 			return nil
