@@ -800,7 +800,12 @@ func createApp(doc Document) *tview.Application {
 		}
 
 		if event.Key() == tcell.KeyCtrlC {
-			app.Stop()
+			if filterInput.HasFocus() && len(filterInput.GetText()) > 0 {
+				filterInput.SetText("")
+			} else {
+				app.Stop()
+			}
+
 			return nil
 		}
 
