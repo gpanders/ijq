@@ -563,14 +563,21 @@ func createApp(doc Document) *tview.Application {
 	// is ever displayed in the UI. But for large inputs (which will take
 	// longer to calculate the correct value), this is a better initial
 	// guess.
-	var inputLineCount atomic.Int64
+	var (
+		inputLineCount  atomic.Int64
+		outputLineCount atomic.Int64
+	)
+
 	inputLineCount.Store(10000)
-	var outputLineCount atomic.Int64
 	outputLineCount.Store(10000)
 
 	// Process document with empty filter to populate input view
 	go func() {
-		_, err := doc.WithFilter(".").WriteTo(&inputPane)
+		mutex.Lock()
+		initial := doc.WithFilter(".")
+		mutex.Unlock()
+
+		_, err := initial.WriteTo(&inputPane)
 		if err != nil {
 			log.Printf("Error while running jq on input: %s\n", err)
 			return

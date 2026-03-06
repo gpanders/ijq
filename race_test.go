@@ -61,10 +61,11 @@ func TestAppRace(t *testing.T) {
 	screen.PostEventWait(tcell.NewEventKey(tcell.KeyDown, ' ', tcell.ModShift))
 
 	var wg sync.WaitGroup
+	const iterations = 100
 
 	wg.Go(func() {
 		// Repeatedly type a filter expression to stress the filter-edit path.
-		for i := 0; i < 100; i++ {
+		for i := 0; i < iterations; i++ {
 			for _, r := range ".foo.bar" {
 				screen.PostEventWait(tcell.NewEventKey(tcell.KeyRune, r, tcell.ModNone))
 			}
@@ -73,15 +74,14 @@ func TestAppRace(t *testing.T) {
 
 	wg.Go(func() {
 		// Trigger a command key in parallel to race with filter updates.
-		for i := 0; i < 100; i++ {
+		for i := 0; i < iterations; i++ {
 			screen.PostEventWait(tcell.NewEventKey(tcell.KeyCtrlO, ' ', tcell.ModNone))
 		}
 	})
 
 	wg.Wait()
 
-	// Request shutdown and ensure app.Run terminates promptly.
-	screen.PostEventWait(tcell.NewEventKey(tcell.KeyCtrlC, ' ', tcell.ModNone))
+	app.Stop()
 
 	select {
 	case err := <-runErr:
