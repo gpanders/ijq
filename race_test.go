@@ -58,7 +58,7 @@ func TestAppRace(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Prime the UI with an initial navigation key event.
-	screen.PostEventWait(tcell.NewEventKey(tcell.KeyDown, ' ', tcell.ModShift))
+	app.QueueEvent(tcell.NewEventKey(tcell.KeyDown, ' ', tcell.ModShift))
 
 	var wg sync.WaitGroup
 	const iterations = 100
@@ -67,7 +67,7 @@ func TestAppRace(t *testing.T) {
 		// Repeatedly type a filter expression to stress the filter-edit path.
 		for i := 0; i < iterations; i++ {
 			for _, r := range ".foo.bar" {
-				screen.PostEventWait(tcell.NewEventKey(tcell.KeyRune, r, tcell.ModNone))
+				app.QueueEvent(tcell.NewEventKey(tcell.KeyRune, r, tcell.ModNone))
 			}
 		}
 	})
@@ -75,7 +75,7 @@ func TestAppRace(t *testing.T) {
 	wg.Go(func() {
 		// Trigger a command key in parallel to race with filter updates.
 		for i := 0; i < iterations; i++ {
-			screen.PostEventWait(tcell.NewEventKey(tcell.KeyCtrlO, ' ', tcell.ModNone))
+			app.QueueEvent(tcell.NewEventKey(tcell.KeyCtrlO, ' ', tcell.ModNone))
 		}
 	})
 
