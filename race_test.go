@@ -92,3 +92,84 @@ func TestAppRace(t *testing.T) {
 		t.Fatal("timed out waiting for app to stop")
 	}
 }
+
+func TestOpenEditorRace(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("race reproduction test relies on a shell helper script")
+	}
+
+	// Use "true" as the editor so app.Suspend completes near-instantly.
+	t.Setenv("VISUAL", "true")
+
+	cfg := DefaultConfig()
+	cfg.HistoryFile = ""
+	cfg.JQCommand = "./testdata/catok"
+
+	doc := Document{
+		input:  strings.Repeat(`{"foo":1,"bar":2,"baz":3}`+"\n", 20),
+		filter: ".",
+		options: options.Options{
+			HistoryFile: cfg.HistoryFile,
+			JQCommand:   cfg.JQCommand,
+		},
+		config: cfg,
+	}
+
+	app := createApp(doc)
+	screen := tcell.NewSimulationScreen("")
+	if err := screen.Init(); err != nil {
+		t.Fatalf("init simulation screen: %v", err)
+	}
+
+	app.SetScreen(screen)
+
+	runErr := make(chan error, 1)
+	go func() {
+		runErr <- app.Run()
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+
+	var wg sync.WaitGroup
+	const iterations = 50
+
+	wg.Go(func() {
+		// Repeatedly type a filter expression to stress the filter-edit /
+		// queueDocumentUpdate path.
+		for i := 0; i < iterations; i++ {
+			for _, r := range ".foo" {
+				app.QueueEvent(tcell.NewEventKey(tcell.KeyRune, r, tcell.ModNone))
+			}
+		}
+	})
+
+	wg.Go(func() {
+		// Toggle the input pane to race with filter updates.
+		for i := 0; i < iterations; i++ {
+			app.QueueEvent(tcell.NewEventKey(tcell.KeyCtrlO, ' ', tcell.ModNone))
+		}
+	})
+
+	wg.Go(func() {
+		// Trigger Alt+E to exercise the openEditor mutex path. Each
+		// invocation acquires the mutex, runs app.Suspend (with "true",
+		// near-instant), and on the filter pane path calls
+		// queueDocumentUpdate after releasing the mutex.
+		for i := 0; i < iterations; i++ {
+			app.QueueEvent(tcell.NewEventKey(tcell.KeyRune, 'e', tcell.ModAlt))
+		}
+	})
+
+	wg.Wait()
+
+	app.Stop()
+
+	select {
+	case err := <-runErr:
+		if err != nil {
+			t.Fatalf("run app: %v", err)
+		}
+	case <-time.After(30 * time.Second):
+		t.Fatal("timed out waiting for app to stop")
+	}
+}

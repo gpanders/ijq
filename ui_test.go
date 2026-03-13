@@ -128,6 +128,12 @@ func (ta *testApp) postRune(r rune) {
 	time.Sleep(testRedrawDelay)
 }
 
+func (ta *testApp) postAltRune(r rune) {
+	ta.t.Helper()
+	ta.app.QueueEvent(tcell.NewEventKey(tcell.KeyRune, r, tcell.ModAlt))
+	time.Sleep(testRedrawDelay)
+}
+
 func (ta *testApp) postRunes(text string) {
 	ta.t.Helper()
 	for _, r := range text {
@@ -535,4 +541,95 @@ func TestUIOverlayMenuKeybindings(t *testing.T) {
 	ta.requireText("quit")
 	ta.requireText("Ctrl-C")
 	ta.requireText("close")
+}
+
+func TestUIOpenEditorNoopPreservesContent(t *testing.T) {
+	t.Setenv("VISUAL", "true")
+
+	ta := newTestApp(t, `{"key":"value"}`, nil)
+
+	// Type a filter so we have known content in the filter input
+	ta.postRunes("key")
+	ta.waitForText(".key", testActionTimeout)
+
+	// Open editor (Alt+E) — "true" exits 0 without modifying the file,
+	// so the original content should be preserved after scissor stripping.
+	ta.postAltRune('e')
+
+	// App should resume and filter should still show the same text
+	ta.waitForText(".key", testActionTimeout)
+	ta.waitForText("Filter", testActionTimeout)
+}
+
+func TestUIOpenEditorFilterWriteBack(t *testing.T) {
+	t.Setenv("VISUAL", "./testdata/editor-write")
+	t.Setenv("EDITOR_CONTENT", ".new_filter")
+
+	ta := newTestApp(t, `{"key":"value"}`, nil)
+
+	ta.requireText(".")
+	ta.waitForInputFieldFocus(testActionTimeout)
+
+	ta.postAltRune('e')
+	ta.waitForText(".new_filter", testActionTimeout)
+}
+
+func TestUIOpenEditorInputWriteBack(t *testing.T) {
+	t.Setenv("VISUAL", "./testdata/editor-write")
+	t.Setenv("EDITOR_CONTENT", `{"replaced":true}`)
+
+	ta := newTestApp(t, `{"original":true}`, nil)
+
+	ta.waitForText("original", testActionTimeout)
+
+	// Move focus to input pane
+	ta.postKey(tcell.KeyUp, tcell.ModShift)
+	ta.waitForTextViewFocus(testActionTimeout)
+
+	ta.postAltRune('e')
+	ta.waitForText("replaced", testActionTimeout)
+}
+
+func TestUIOpenEditorOutputReadOnly(t *testing.T) {
+	t.Setenv("VISUAL", "./testdata/editor-write")
+	t.Setenv("EDITOR_CONTENT", "SHOULD_NOT_APPEAR")
+
+	ta := newTestApp(t, `{"key":"value"}`, nil)
+
+	ta.waitForText("key", testActionTimeout)
+
+	// Move focus to output pane
+	ta.postKey(tcell.KeyRight, tcell.ModShift)
+	ta.waitForTextViewFocus(testActionTimeout)
+
+	ta.postAltRune('e')
+
+	// Wait for the app to resume after the editor exits, then verify
+	// the write-back content did not leak into any pane.
+	ta.waitForText("Filter", testActionTimeout)
+	ta.requireNoText("SHOULD_NOT_APPEAR")
+	ta.requireText("key")
+}
+
+func TestUIOpenEditorError(t *testing.T) {
+	t.Setenv("VISUAL", "false")
+
+	ta := newTestApp(t, `{"key":"value"}`, nil)
+
+	ta.postAltRune('e')
+	ta.waitForText("Editor error", testActionTimeout)
+}
+
+func TestUIOpenEditorViaMenu(t *testing.T) {
+	t.Setenv("VISUAL", "./testdata/editor-write")
+	t.Setenv("EDITOR_CONTENT", ".menu_filter")
+
+	ta := newTestApp(t, `{"key":"value"}`, nil)
+
+	ta.waitForInputFieldFocus(testActionTimeout)
+
+	ta.openMenu()
+	ta.selectMenuItem(3)
+
+	ta.waitForText(".menu_filter", testActionTimeout)
 }

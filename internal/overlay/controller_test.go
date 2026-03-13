@@ -232,3 +232,16 @@ func TestHandleInputCheatSheetAndKeybindingsReturnToRoot(t *testing.T) {
 	assert.Nil(t, event)
 	assert.Equal(t, modeRoot, controller.mode)
 }
+
+func TestHandleInputOpenEditorClosesAndCallsCallback(t *testing.T) {
+	editorCalled := false
+	controller := newOpenController(t, Callbacks{
+		OpenFocusedPaneInEditor: func() { editorCalled = true },
+	})
+
+	controller.rootMenu.SetCurrentItem(3)
+	event := controller.HandleInput(keyEvent(tcell.KeyEnter))
+	assert.Nil(t, event)
+	assert.False(t, controller.IsOpen())
+	assert.True(t, editorCalled)
+}
