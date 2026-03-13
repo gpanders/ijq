@@ -51,7 +51,7 @@ func TestDocumentWriteTo(t *testing.T) {
 
 	doc := &Document{
 		filter:  "-",
-		options: options.Options{JQCommand: "cat"},
+		options: options.Options{JQCommand: "./testdata/catok"},
 		ctx:     context.Background(),
 	}
 
@@ -69,8 +69,7 @@ func TestDocumentWriteTo(t *testing.T) {
 }
 
 func TestDocumentWithFilterPreservesFields(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	cfg := DefaultConfig()
 	opts := options.Options{

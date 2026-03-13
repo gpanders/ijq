@@ -92,6 +92,12 @@ func (d Document) WriteTo(w io.Writer) (n int64, err error) {
 		}()
 	}
 
+	if _, ok := w.(*bytes.Buffer); ok {
+		// When writing to a buffer always disable colors
+		opts.Monochrome = true
+		opts.ForceColor = false
+	}
+
 	args := append(opts.ToSlice(), d.filter)
 	cmd := exec.CommandContext(d.ctx, string(d.options.JQCommand), args...)
 
@@ -681,6 +687,171 @@ func createApp(doc Document) *tview.Application {
 		isHistoryNoticeOpen = false
 	}
 
+	openEditor := func() {
+		focused := app.GetFocus()
+
+		isFilter := focused == filterInput
+		isInput := focused == inputView
+		isOutput := focused == outputView
+
+		newContent, writeback := func() (string, bool) {
+			const scissor = "-------------------- >8 --------------------"
+
+			mutex.Lock()
+			defer mutex.Unlock()
+
+			var (
+				content   string
+				ext       string
+				header    strings.Builder
+				firstLine string
+				comment   string
+			)
+
+			switch {
+			case isFilter:
+				content = filterInput.GetText()
+				ext = ".jq"
+				comment = "#"
+				firstLine = "Filter input. Changes will be saved."
+			case isInput:
+				ext = ".json"
+				comment = "//"
+				firstLine = "jq input. Changes will be saved."
+
+				// Run jq on the raw input to get pretty-printed JSON without
+				// tview style tags (avoids expensive GetText(true) tag stripping).
+				var buf bytes.Buffer
+				d := doc.WithFilter(".")
+				if _, err := d.WriteTo(&buf); err == nil {
+					content = buf.String()
+				} else {
+					content = doc.input
+				}
+			case isOutput:
+				ext = ".json"
+				comment = "//"
+				firstLine = "jq output. Changes will NOT be saved."
+
+				// Run jq with the current filter to get plain text output without
+				// tview style tags (avoids expensive GetText(true) tag stripping).
+				var buf bytes.Buffer
+				d := doc.WithFilter(doc.filter)
+				if _, err := d.WriteTo(&buf); err == nil {
+					content = buf.String()
+				} else {
+					content = outputView.GetText(true)
+				}
+			default:
+				return "", false
+			}
+
+			lines := []string{
+				firstLine,
+				"",
+				"Everything above and including the following line will be REMOVED",
+				scissor,
+			}
+
+			for _, line := range lines {
+				header.WriteString(comment)
+				if len(line) > 0 {
+					header.WriteString(" " + line)
+				}
+				header.WriteByte('\n')
+			}
+
+			header.WriteByte('\n')
+
+			editor := os.Getenv("VISUAL")
+			if editor == "" {
+				editor = os.Getenv("EDITOR")
+			}
+			if editor == "" {
+				editor = "vi"
+			}
+
+			tmpFile, err := os.CreateTemp("", "ijq-*"+ext)
+			if err != nil {
+				errorView.Clear()
+				fmt.Fprintf(errorView, "Failed to create temp file: %s", err)
+				return "", false
+			}
+			tmpName := tmpFile.Name()
+			defer os.Remove(tmpName)
+
+			if _, err := tmpFile.WriteString(header.String() + content); err != nil {
+				tmpFile.Close()
+				errorView.Clear()
+				fmt.Fprintf(errorView, "Failed to write temp file: %s", err)
+				return "", false
+			}
+			tmpFile.Close()
+
+			var editorErr error
+			app.Suspend(func() {
+				cmd := exec.Command("sh", "-c", editor+` "$1"`, "--", tmpName)
+				cmd.Stdin = os.Stdin
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				editorErr = cmd.Run()
+			})
+
+			if editorErr != nil {
+				errorView.Clear()
+				fmt.Fprintf(errorView, "Editor error: %s", editorErr)
+				return "", false
+			}
+
+			// Output pane is read-only; no write-back needed.
+			if isOutput {
+				return "", false
+			}
+
+			edited, err := os.ReadFile(tmpName)
+			if err != nil {
+				errorView.Clear()
+				fmt.Fprintf(errorView, "Failed to read back from editor: %s", err)
+				return "", false
+			}
+			result := string(edited)
+
+			// Strip everything up to and including the scissor line
+			if idx := strings.Index(result, scissor); idx != -1 {
+				result = result[idx+len(scissor):]
+				result = strings.TrimSpace(result)
+			}
+
+			return result, true
+		}()
+
+		if !writeback {
+			return
+		}
+
+		// Write-back happens without the mutex: filterInput.SetText
+		// triggers SetChangedFunc which calls queueDocumentUpdate,
+		// and queueDocumentUpdate itself acquires the mutex.
+		if isFilter {
+			filterInput.SetText(newContent)
+		} else if isInput {
+			// Update doc.input and re-run the output filter
+			queueDocumentUpdate(func(next *Document) {
+				next.input = newContent
+			})
+
+			// Re-populate the input view (same pattern as initial population)
+			go func() {
+				mutex.Lock()
+				refreshDoc := doc.WithFilter(".")
+				mutex.Unlock()
+				refreshDoc.WriteTo(&inputPane)
+				inputLineCount.Store(int64(strings.Count(inputView.GetText(false), "\n")))
+				app.Draw()
+			}()
+		}
+	}
+
 	overlayPopup := overlay.NewController(app, pages, "overlay", overlay.Callbacks{
 		ConfigureRows: func() []string { return overlay.ConfigureRows(doc.options) },
 		ToggleConfigureRow: func(option options.Option) {
@@ -783,6 +954,11 @@ func createApp(doc Document) *tview.Application {
 
 		if activeKeymaps.ToggleMenu.Matches(event) {
 			overlayPopup.Open()
+			return nil
+		}
+
+		if activeKeymaps.OpenEditor.Matches(event) {
+			openEditor()
 			return nil
 		}
 
