@@ -214,7 +214,7 @@ func TestHandleInputCheatSheetAndKeybindingsReturnToRoot(t *testing.T) {
 		},
 	})
 
-	controller.rootMenu.SetCurrentItem(4)
+	controller.rootMenu.SetCurrentItem(5)
 	event := controller.HandleInput(keyEvent(tcell.KeyEnter))
 	assert.Nil(t, event)
 	assert.Equal(t, modeCheatSheet, controller.mode)
@@ -223,7 +223,7 @@ func TestHandleInputCheatSheetAndKeybindingsReturnToRoot(t *testing.T) {
 	assert.Nil(t, event)
 	assert.Equal(t, modeRoot, controller.mode)
 
-	controller.rootMenu.SetCurrentItem(3)
+	controller.rootMenu.SetCurrentItem(4)
 	event = controller.HandleInput(keyEvent(tcell.KeyEnter))
 	assert.Nil(t, event)
 	assert.Equal(t, modeKeybindings, controller.mode)

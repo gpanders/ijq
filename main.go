@@ -739,6 +739,7 @@ func createApp(doc Document) *tview.Application {
 		ActiveKeybindings: func() []overlay.KeybindingEntry {
 			return activeKeybindingEntries(doc.config.Keymap)
 		},
+		OpenFocusedPaneInEditor: openEditor,
 	})
 
 	pages.AddPage("overlay", overlayPopup.Primitive(), true, false)

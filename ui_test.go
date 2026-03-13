@@ -415,6 +415,7 @@ func TestUIOverlayMenuToggle(t *testing.T) {
 	ta.openMenu()
 	ta.requireText("Configure")
 	ta.requireText("Save current filter to history")
+	ta.requireText("Open focused pane in editor")
 	ta.requireText("Manage history")
 	ta.requireText("Keybindings")
 	ta.requireText("Cheat sheet")
@@ -505,7 +506,7 @@ func TestUIOverlayMenuCheatSheet(t *testing.T) {
 	ta := newTestApp(t, `{"key":"value"}`, nil)
 
 	ta.openMenu()
-	ta.selectMenuItem(4)
+	ta.selectMenuItem(5)
 	ta.waitForText("jq cheat sheet", testActionTimeout)
 	ta.requireText("Basics")
 	ta.requireText("identity (return input)")
@@ -522,7 +523,7 @@ func TestUIOverlayMenuKeybindings(t *testing.T) {
 	ta := newTestApp(t, `{"key":"value"}`, nil)
 
 	ta.openMenu()
-	ta.selectMenuItem(3)
+	ta.selectMenuItem(4)
 	ta.waitForText("Keybindings", testActionTimeout)
 	ta.requireText("submit-filter")
 	ta.requireText("Enter")

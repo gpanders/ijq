@@ -68,6 +68,7 @@ type Callbacks struct {
 	DeleteHistoryEntryAt       func(index int) error
 	ApplyHistoryEntry          func(expr string)
 	ActiveKeybindings          func() []KeybindingEntry
+	OpenFocusedPaneInEditor    func()
 }
 
 type Controller struct {
@@ -129,6 +130,7 @@ func NewController(app *tview.Application, pages *tview.Pages, pageName string, 
 	c.rootMenu.AddItem("Configure", "", 0, nil)
 	c.rootMenu.AddItem("Save current filter to history", "", 0, nil)
 	c.rootMenu.AddItem("Manage history", "", 0, nil)
+	c.rootMenu.AddItem("Open focused pane in editor", "", 0, nil)
 	c.rootMenu.AddItem("Keybindings", "", 0, nil)
 	c.rootMenu.AddItem("Cheat sheet", "", 0, nil)
 
@@ -428,8 +430,11 @@ func (c *Controller) activateRootMenu(index int) {
 	case 2:
 		c.showHistory()
 	case 3:
-		c.showKeybindings()
+		c.Close()
+		c.callbacks.OpenFocusedPaneInEditor()
 	case 4:
+		c.showKeybindings()
+	case 5:
 		c.showCheatSheet()
 	}
 }
