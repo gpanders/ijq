@@ -338,6 +338,7 @@ func activeKeybindingEntries(keymap Keymap) []overlay.KeybindingEntry {
 	appendKeybindingEntries(&rows, "toggle-input-pane", keymap.ToggleInputPane)
 	appendKeybindingEntries(&rows, "save-filter-history", keymap.SaveFilterHistory)
 	appendKeybindingEntries(&rows, "toggle-menu", keymap.ToggleMenu)
+	appendKeybindingEntries(&rows, "open-editor", keymap.OpenEditor)
 	appendKeybindingEntries(&rows, "textview-page-up", keymap.TextviewPageUp)
 	appendKeybindingEntries(&rows, "textview-page-down", keymap.TextviewPageDown)
 	appendKeybindingEntries(&rows, "textview-end", keymap.TextviewEnd)

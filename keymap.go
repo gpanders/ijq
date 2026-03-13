@@ -216,6 +216,7 @@ type Keymap struct {
 	ToggleInputPane    KeyBindings `scfg:"toggle-input-pane"`
 	SaveFilterHistory  KeyBindings `scfg:"save-filter-history"`
 	ToggleMenu         KeyBindings `scfg:"toggle-menu"`
+	OpenEditor         KeyBindings `scfg:"open-editor"`
 
 	TextviewPageUp   KeyBindings `scfg:"textview-page-up"`
 	TextviewPageDown KeyBindings `scfg:"textview-page-down"`
@@ -250,6 +251,7 @@ func DefaultKeymap() Keymap {
 			{key: tcell.KeyRune, rune: '?', mods: tcell.ModCtrl},
 			{key: tcell.KeyRune, rune: '_', mods: tcell.ModCtrl},
 		},
+		OpenEditor: KeyBindings{{key: tcell.KeyRune, rune: 'e', mods: tcell.ModAlt}},
 
 		TextviewPageUp:   KeyBindings{{key: tcell.KeyRune, rune: 'b'}, {key: tcell.KeyRune, rune: 'v', mods: tcell.ModAlt}},
 		TextviewPageDown: KeyBindings{{key: tcell.KeyRune, rune: 'f'}},
