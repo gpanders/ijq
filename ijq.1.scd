@@ -104,7 +104,7 @@ precedence.
 	*focus-input-pane-up*, *focus-input-pane-left*, *focus-output-pane*,
 	*focus-filter-input*, *next-focus*, *previous-focus*,
 	*toggle-input-pane*, *save-filter-history*, *toggle-menu*,
-	*textview-page-up*,
+	*open-editor*, *textview-page-up*,
 	*textview-page-down*, and *textview-end*.
 
 # KEY BINDINGS
@@ -165,6 +165,13 @@ section of the config file.
 
 *Ctrl-/*, *Ctrl-?*, *Ctrl-\_*
 	Open or close the overlay menu.
+
+*Alt-E*
+	Open the contents of the focused pane or input field in an external
+	editor. The editor is resolved from _$VISUAL_, then _$EDITOR_, falling
+	back to _vi_ if neither is set. For the filter input and input pane,
+	changes made in the editor are applied back. The output pane is
+	read-only. Also available from the overlay menu.
 
 *Space*
 	When the overlay root menu is open, activate the selected menu entry.
