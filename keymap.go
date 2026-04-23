@@ -5,8 +5,11 @@
 package main
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
+	"reflect"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -85,20 +88,20 @@ func (k *KeyBinding) UnmarshalText(text []byte) error {
 	return fmt.Errorf("unknown key %q", base)
 }
 
-func (binding KeyBinding) Matches(event *tcell.EventKey) bool {
-	if event.Key() != binding.key {
+func (k KeyBinding) Matches(event *tcell.EventKey) bool {
+	if event.Key() != k.key {
 		return false
 	}
 
-	if binding.key == tcell.KeyRune && event.Rune() != binding.rune {
+	if k.key == tcell.KeyRune && event.Rune() != k.rune {
 		return false
 	}
 
-	if event.Modifiers() == binding.mods {
+	if event.Modifiers() == k.mods {
 		return true
 	}
 
-	if binding.mods == tcell.ModNone && isControlKey(binding.key) {
+	if k.mods == tcell.ModNone && isControlKey(k.key) {
 		mods := event.Modifiers()
 		return mods == tcell.ModCtrl || mods == tcell.ModCtrl|tcell.ModShift
 	}
@@ -118,26 +121,26 @@ func (bindings KeyBindings) Matches(event *tcell.EventKey) bool {
 	return false
 }
 
-func (binding KeyBinding) String() string {
-	if binding.key == tcell.KeyCtrlUnderscore {
+func (k KeyBinding) String() string {
+	if k.key == tcell.KeyCtrlUnderscore {
 		return "Ctrl-/"
 	}
 
-	if binding.key == tcell.KeyRune {
-		base := string(binding.rune)
-		if binding.rune == ' ' {
+	if k.key == tcell.KeyRune {
+		base := string(k.rune)
+		if k.rune == ' ' {
 			base = "Space"
 		}
 
-		return formatKeyLabel(binding.mods, base)
+		return formatKeyLabel(k.mods, base)
 	}
 
-	base := keyName(binding.key)
+	base := keyName(k.key)
 	if strings.HasPrefix(base, "Ctrl-") || strings.HasPrefix(base, "Alt+") || strings.HasPrefix(base, "Shift+") {
 		return base
 	}
 
-	return formatKeyLabel(binding.mods, base)
+	return formatKeyLabel(k.mods, base)
 }
 
 func (bindings KeyBindings) PrimaryString() string {
@@ -195,65 +198,105 @@ func keyName(key tcell.Key) string {
 }
 
 type Keymap struct {
-	SubmitFilter KeyBindings `scfg:"submit-filter"`
-	MoveDown     KeyBindings `scfg:"move-down"`
-	MoveUp       KeyBindings `scfg:"move-up"`
-	PageDown     KeyBindings `scfg:"page-down"`
-	LineStart    KeyBindings `scfg:"line-start"`
-	LineEnd      KeyBindings `scfg:"line-end"`
-	HalfPageUp   KeyBindings `scfg:"half-page-up"`
-	HalfPageDown KeyBindings `scfg:"half-page-down"`
+	MoveDown       KeyBindings `scfg:"move-down"`
+	MoveUp         KeyBindings `scfg:"move-up"`
+	PageDown       KeyBindings `scfg:"page-down"`
+	PageUp         KeyBindings `scfg:"page-up"`
+	HalfPageUp     KeyBindings `scfg:"half-page-up"`
+	HalfPageDown   KeyBindings `scfg:"half-page-down"`
+	ScrollToTop    KeyBindings `scfg:"scroll-to-top"`
+	ScrollToBottom KeyBindings `scfg:"scroll-to-bottom"`
 
-	FilterCursorRight KeyBindings `scfg:"filter-cursor-right"`
-	FilterCursorLeft  KeyBindings `scfg:"filter-cursor-left"`
+	CursorRight KeyBindings `scfg:"cursor-right"`
+	CursorLeft  KeyBindings `scfg:"cursor-left"`
+	LineStart   KeyBindings `scfg:"line-start"`
+	LineEnd     KeyBindings `scfg:"line-end"`
 
-	FocusInputPaneUp   KeyBindings `scfg:"focus-input-pane-up"`
-	FocusInputPaneLeft KeyBindings `scfg:"focus-input-pane-left"`
-	FocusOutputPane    KeyBindings `scfg:"focus-output-pane"`
-	FocusFilterInput   KeyBindings `scfg:"focus-filter-input"`
-	NextFocus          KeyBindings `scfg:"next-focus"`
-	PreviousFocus      KeyBindings `scfg:"previous-focus"`
-	ToggleInputPane    KeyBindings `scfg:"toggle-input-pane"`
-	SaveFilterHistory  KeyBindings `scfg:"save-filter-history"`
-	ToggleMenu         KeyBindings `scfg:"toggle-menu"`
+	SubmitFilter         KeyBindings `scfg:"submit-filter"`
+	FocusInputPane       KeyBindings `scfg:"focus-input-pane"`
+	FocusOutputPane      KeyBindings `scfg:"focus-output-pane"`
+	FocusFilterInput     KeyBindings `scfg:"focus-filter-input"`
+	NextFocus            KeyBindings `scfg:"next-focus"`
+	PreviousFocus        KeyBindings `scfg:"previous-focus"`
+	NextAutocomplete     KeyBindings `scfg:"next-autocomplete"`
+	PreviousAutocomplete KeyBindings `scfg:"previous-autocomplete"`
+	ToggleInputPane      KeyBindings `scfg:"toggle-input-pane"`
+	SaveFilterHistory    KeyBindings `scfg:"save-filter-history"`
+	ToggleMenu           KeyBindings `scfg:"toggle-menu"`
+}
 
-	TextviewPageUp   KeyBindings `scfg:"textview-page-up"`
-	TextviewPageDown KeyBindings `scfg:"textview-page-down"`
-	TextviewEnd      KeyBindings `scfg:"textview-end"`
+type KeymapEntry struct {
+	Action     string
+	Keybinding string
+}
+
+func (keymap Keymap) Entries() []KeymapEntry {
+	typ := reflect.TypeFor[Keymap]()
+	val := reflect.ValueOf(keymap)
+
+	entries := make(map[string][]string, typ.NumField())
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		action := field.Tag.Get("scfg")
+		if action == "" {
+			continue
+		}
+
+		bindings, ok := val.Field(i).Interface().(KeyBindings)
+		if !ok || len(bindings) == 0 {
+			continue
+		}
+
+		entries[action] = make([]string, 0, len(bindings))
+
+		for _, binding := range bindings {
+			entries[action] = append(entries[action], binding.String())
+		}
+	}
+
+	result := make([]KeymapEntry, 0, len(entries))
+	for action, bindings := range entries {
+		result = append(result, KeymapEntry{Action: action, Keybinding: strings.Join(bindings, ", ")})
+	}
+
+	slices.SortFunc(result, func(a, b KeymapEntry) int {
+		return cmp.Compare(a.Action, b.Action)
+	})
+
+	return result
 }
 
 func DefaultKeymap() Keymap {
 	return Keymap{
-		SubmitFilter: KeyBindings{{key: tcell.KeyEnter}},
-		MoveDown:     KeyBindings{{key: tcell.KeyCtrlN}},
-		MoveUp:       KeyBindings{{key: tcell.KeyCtrlP}},
-		PageDown:     KeyBindings{{key: tcell.KeyCtrlV}},
-		LineStart:    KeyBindings{{key: tcell.KeyCtrlA}, {key: tcell.KeyRune, rune: '0'}},
-		LineEnd:      KeyBindings{{key: tcell.KeyCtrlE}, {key: tcell.KeyRune, rune: '$'}},
-		HalfPageUp:   KeyBindings{{key: tcell.KeyCtrlU}, {key: tcell.KeyRune, rune: 'u'}},
-		HalfPageDown: KeyBindings{{key: tcell.KeyCtrlD}, {key: tcell.KeyRune, rune: 'd'}},
+		MoveDown:       KeyBindings{{key: tcell.KeyCtrlN}},
+		MoveUp:         KeyBindings{{key: tcell.KeyCtrlP}},
+		PageDown:       KeyBindings{{key: tcell.KeyRune, rune: 'f'}, {key: tcell.KeyCtrlF}, {key: tcell.KeyCtrlV}},
+		PageUp:         KeyBindings{{key: tcell.KeyRune, rune: 'b'}, {key: tcell.KeyCtrlB}, {key: tcell.KeyRune, rune: 'v', mods: tcell.ModAlt}},
+		HalfPageUp:     KeyBindings{{key: tcell.KeyRune, rune: 'u'}, {key: tcell.KeyCtrlU}},
+		HalfPageDown:   KeyBindings{{key: tcell.KeyRune, rune: 'd'}, {key: tcell.KeyCtrlD}},
+		ScrollToTop:    KeyBindings{{key: tcell.KeyRune, rune: 'g'}, {key: tcell.KeyHome}},
+		ScrollToBottom: KeyBindings{{key: tcell.KeyRune, rune: 'G'}, {key: tcell.KeyEnd}},
 
-		FilterCursorRight: KeyBindings{{key: tcell.KeyCtrlF}},
-		FilterCursorLeft:  KeyBindings{{key: tcell.KeyCtrlB}},
+		CursorRight: KeyBindings{{key: tcell.KeyCtrlF}},
+		CursorLeft:  KeyBindings{{key: tcell.KeyCtrlB}},
+		LineStart:   KeyBindings{{key: tcell.KeyCtrlA}, {key: tcell.KeyRune, rune: '0'}},
+		LineEnd:     KeyBindings{{key: tcell.KeyCtrlE}, {key: tcell.KeyRune, rune: '$'}},
 
-		FocusInputPaneUp:   KeyBindings{{key: tcell.KeyUp, mods: tcell.ModShift}},
-		FocusInputPaneLeft: KeyBindings{{key: tcell.KeyLeft, mods: tcell.ModShift}},
-		FocusOutputPane:    KeyBindings{{key: tcell.KeyRight, mods: tcell.ModShift}},
-		FocusFilterInput:   KeyBindings{{key: tcell.KeyDown, mods: tcell.ModShift}},
-		NextFocus:          KeyBindings{{key: tcell.KeyTab}},
-		PreviousFocus:      KeyBindings{{key: tcell.KeyBacktab}},
-		ToggleInputPane:    KeyBindings{{key: tcell.KeyCtrlO}},
-		SaveFilterHistory:  KeyBindings{{key: tcell.KeyCtrlS}},
+		SubmitFilter:         KeyBindings{{key: tcell.KeyEnter}},
+		FocusInputPane:       KeyBindings{{key: tcell.KeyUp, mods: tcell.ModShift}, {key: tcell.KeyLeft, mods: tcell.ModShift}},
+		FocusOutputPane:      KeyBindings{{key: tcell.KeyRight, mods: tcell.ModShift}},
+		FocusFilterInput:     KeyBindings{{key: tcell.KeyDown, mods: tcell.ModShift}},
+		NextFocus:            KeyBindings{{key: tcell.KeyTab}},
+		PreviousFocus:        KeyBindings{{key: tcell.KeyBacktab}},
+		NextAutocomplete:     KeyBindings{{key: tcell.KeyTab}},
+		PreviousAutocomplete: KeyBindings{{key: tcell.KeyBacktab}},
+		ToggleInputPane:      KeyBindings{{key: tcell.KeyCtrlO}},
+		SaveFilterHistory:    KeyBindings{{key: tcell.KeyCtrlS}},
 		ToggleMenu: KeyBindings{
 			{key: tcell.KeyCtrlUnderscore},
-			{key: tcell.KeyRune, rune: '/', mods: tcell.ModCtrl},
 			{key: tcell.KeyRune, rune: '?', mods: tcell.ModCtrl},
 			{key: tcell.KeyRune, rune: '_', mods: tcell.ModCtrl},
 		},
-
-		TextviewPageUp:   KeyBindings{{key: tcell.KeyRune, rune: 'b'}, {key: tcell.KeyRune, rune: 'v', mods: tcell.ModAlt}},
-		TextviewPageDown: KeyBindings{{key: tcell.KeyRune, rune: 'f'}},
-		TextviewEnd:      KeyBindings{{key: tcell.KeyRune, rune: 'G'}},
 	}
 }
 

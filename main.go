@@ -261,41 +261,6 @@ func updateScrollIndicator(name string, lineCount int, tv *tview.TextView) {
 	tv.SetTitle(fmt.Sprintf("%s (%d%%)", name, percent))
 }
 
-func centerPrimitive(width int, height int, primitive tview.Primitive) tview.Primitive {
-	return tview.NewGrid().
-		SetRows(0, height, 0).
-		SetColumns(0, width, 0).
-		AddItem(primitive, 1, 1, 1, 1, 0, 0, true)
-}
-
-func normalizeOverlayEvent(event *tcell.EventKey, keymap Keymap) *tcell.EventKey {
-	if keymap.MoveDown.Matches(event) {
-		return tcell.NewEventKey(tcell.KeyDown, ' ', tcell.ModNone)
-	}
-
-	if keymap.MoveUp.Matches(event) {
-		return tcell.NewEventKey(tcell.KeyUp, ' ', tcell.ModNone)
-	}
-
-	if keymap.PageDown.Matches(event) || keymap.HalfPageDown.Matches(event) {
-		return tcell.NewEventKey(tcell.KeyPgDn, ' ', tcell.ModNone)
-	}
-
-	if keymap.HalfPageUp.Matches(event) {
-		return tcell.NewEventKey(tcell.KeyPgUp, ' ', tcell.ModNone)
-	}
-
-	if keymap.LineStart.Matches(event) {
-		return tcell.NewEventKey(tcell.KeyHome, ' ', tcell.ModNone)
-	}
-
-	if keymap.LineEnd.Matches(event) {
-		return tcell.NewEventKey(tcell.KeyEnd, ' ', tcell.ModNone)
-	}
-
-	return event
-}
-
 func buildMainHelpText(keymap Keymap) string {
 	menuKey := keymap.ToggleMenu.PrimaryString()
 	if menuKey == "" {
@@ -308,45 +273,6 @@ func buildMainHelpText(keymap Keymap) string {
 	}
 
 	return fmt.Sprintf("[::d]%s[::-] [::b]menu[::-]   [::d]Ctrl-C[::-] [::b]quit[::-]   [::d]%s[::-] [::b]quit and write output[::-]", menuKey, submitKey)
-}
-
-func appendKeybindingEntries(rows *[]overlay.KeybindingEntry, action string, bindings KeyBindings) {
-	for _, binding := range bindings {
-		*rows = append(*rows, overlay.KeybindingEntry{Action: action, Keybinding: binding.String()})
-	}
-}
-
-func activeKeybindingEntries(keymap Keymap) []overlay.KeybindingEntry {
-	rows := make([]overlay.KeybindingEntry, 0, 48)
-
-	appendKeybindingEntries(&rows, "submit-filter", keymap.SubmitFilter)
-	appendKeybindingEntries(&rows, "move-down", keymap.MoveDown)
-	appendKeybindingEntries(&rows, "move-up", keymap.MoveUp)
-	appendKeybindingEntries(&rows, "page-down", keymap.PageDown)
-	appendKeybindingEntries(&rows, "line-start", keymap.LineStart)
-	appendKeybindingEntries(&rows, "line-end", keymap.LineEnd)
-	appendKeybindingEntries(&rows, "half-page-up", keymap.HalfPageUp)
-	appendKeybindingEntries(&rows, "half-page-down", keymap.HalfPageDown)
-	appendKeybindingEntries(&rows, "filter-cursor-right", keymap.FilterCursorRight)
-	appendKeybindingEntries(&rows, "filter-cursor-left", keymap.FilterCursorLeft)
-	appendKeybindingEntries(&rows, "focus-input-pane-up", keymap.FocusInputPaneUp)
-	appendKeybindingEntries(&rows, "focus-input-pane-left", keymap.FocusInputPaneLeft)
-	appendKeybindingEntries(&rows, "focus-output-pane", keymap.FocusOutputPane)
-	appendKeybindingEntries(&rows, "focus-filter-input", keymap.FocusFilterInput)
-	appendKeybindingEntries(&rows, "next-focus", keymap.NextFocus)
-	appendKeybindingEntries(&rows, "previous-focus", keymap.PreviousFocus)
-	appendKeybindingEntries(&rows, "toggle-input-pane", keymap.ToggleInputPane)
-	appendKeybindingEntries(&rows, "save-filter-history", keymap.SaveFilterHistory)
-	appendKeybindingEntries(&rows, "toggle-menu", keymap.ToggleMenu)
-	appendKeybindingEntries(&rows, "textview-page-up", keymap.TextviewPageUp)
-	appendKeybindingEntries(&rows, "textview-page-down", keymap.TextviewPageDown)
-	appendKeybindingEntries(&rows, "textview-end", keymap.TextviewEnd)
-
-	rows = append(rows,
-		overlay.KeybindingEntry{Action: "quit", Keybinding: "Ctrl-C"},
-	)
-
-	return rows
 }
 
 func createApp(doc Document) *tview.Application {
@@ -736,7 +662,17 @@ func createApp(doc Document) *tview.Application {
 			filterInput.SetText(expression)
 		},
 		ActiveKeybindings: func() []overlay.KeybindingEntry {
-			return activeKeybindingEntries(doc.config.Keymap)
+			entries := doc.config.Keymap.Entries()
+			rows := make([]overlay.KeybindingEntry, 0, len(entries)+1)
+			for _, entry := range entries {
+				rows = append(rows, overlay.KeybindingEntry{Action: entry.Action, Keybinding: entry.Keybinding})
+			}
+
+			rows = append(rows,
+				overlay.KeybindingEntry{Action: "quit", Keybinding: "Ctrl-C"},
+			)
+
+			return rows
 		},
 	})
 
@@ -744,7 +680,7 @@ func createApp(doc Document) *tview.Application {
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		focused := app.GetFocus()
-		activeKeymaps := doc.config.Keymap
+		keymap := doc.config.Keymap
 
 		if isHistoryNoticeOpen {
 			closeHistoryNotice()
@@ -752,12 +688,35 @@ func createApp(doc Document) *tview.Application {
 		}
 
 		if overlayPopup.IsOpen() {
-			if activeKeymaps.ToggleMenu.Matches(event) {
+			if keymap.ToggleMenu.Matches(event) {
 				overlayPopup.Close()
 				return nil
 			}
 
-			event = normalizeOverlayEvent(event, activeKeymaps)
+			if keymap.MoveDown.Matches(event) {
+				event = tcell.NewEventKey(tcell.KeyDown, ' ', tcell.ModNone)
+			}
+
+			if keymap.MoveUp.Matches(event) {
+				event = tcell.NewEventKey(tcell.KeyUp, ' ', tcell.ModNone)
+			}
+
+			if keymap.PageDown.Matches(event) || keymap.HalfPageDown.Matches(event) {
+				event = tcell.NewEventKey(tcell.KeyPgDn, ' ', tcell.ModNone)
+			}
+
+			if keymap.PageUp.Matches(event) || keymap.HalfPageUp.Matches(event) {
+				event = tcell.NewEventKey(tcell.KeyPgUp, ' ', tcell.ModNone)
+			}
+
+			if keymap.LineStart.Matches(event) {
+				event = tcell.NewEventKey(tcell.KeyHome, ' ', tcell.ModNone)
+			}
+
+			if keymap.LineEnd.Matches(event) {
+				event = tcell.NewEventKey(tcell.KeyEnd, ' ', tcell.ModNone)
+			}
+
 			return overlayPopup.HandleInput(event)
 		}
 
@@ -767,9 +726,17 @@ func createApp(doc Document) *tview.Application {
 				return event
 			}
 
-			if activeKeymaps.SubmitFilter.Matches(event) {
+			if keymap.SubmitFilter.Matches(event) {
 				submitFilter()
 				return nil
+			}
+
+			if keymap.NextAutocomplete.Matches(event) {
+				return tcell.NewEventKey(tcell.KeyDown, ' ', tcell.ModNone)
+			}
+
+			if keymap.PreviousAutocomplete.Matches(event) {
+				return tcell.NewEventKey(tcell.KeyUp, ' ', tcell.ModNone)
 			}
 
 			if event.Key() == tcell.KeyRune && event.Modifiers() == tcell.ModNone {
@@ -779,12 +746,12 @@ func createApp(doc Document) *tview.Application {
 			}
 		}
 
-		if activeKeymaps.ToggleMenu.Matches(event) {
+		if keymap.ToggleMenu.Matches(event) {
 			overlayPopup.Open()
 			return nil
 		}
 
-		if activeKeymaps.SaveFilterHistory.Matches(event) {
+		if keymap.SaveFilterHistory.Matches(event) {
 			status, expression, err := saveCurrentFilterToHistory()
 			if err != nil {
 				showHistoryNotice("Failed to save filter to history")
@@ -816,87 +783,92 @@ func createApp(doc Document) *tview.Application {
 			return nil
 		}
 
-		if activeKeymaps.MoveDown.Matches(event) {
+		if keymap.MoveDown.Matches(event) {
 			return tcell.NewEventKey(tcell.KeyDown, ' ', tcell.ModNone)
 		}
 
-		if activeKeymaps.MoveUp.Matches(event) {
+		if keymap.MoveUp.Matches(event) {
 			return tcell.NewEventKey(tcell.KeyUp, ' ', tcell.ModNone)
 		}
 
-		if activeKeymaps.PageDown.Matches(event) {
-			return tcell.NewEventKey(tcell.KeyPgDn, ' ', tcell.ModNone)
+		if keymap.PageDown.Matches(event) {
+			if _, ok := focused.(*tview.TextView); ok {
+				return tcell.NewEventKey(tcell.KeyPgDn, ' ', tcell.ModNone)
+			}
 		}
 
-		if activeKeymaps.LineStart.Matches(event) {
+		if keymap.PageUp.Matches(event) {
+			if _, ok := focused.(*tview.TextView); ok {
+				return tcell.NewEventKey(tcell.KeyPgUp, ' ', tcell.ModNone)
+			}
+		}
+
+		if keymap.LineStart.Matches(event) {
+			if filterInput.HasFocus() {
+				return tcell.NewEventKey(tcell.KeyHome, ' ', tcell.ModNone)
+			}
+
 			if tv, ok := focused.(*tview.TextView); ok {
 				scrollHorizontally(tv, false)
 				return nil
 			}
 		}
 
-		if activeKeymaps.LineEnd.Matches(event) {
+		if keymap.LineEnd.Matches(event) {
+			if filterInput.HasFocus() {
+				return tcell.NewEventKey(tcell.KeyEnd, ' ', tcell.ModNone)
+			}
+
 			if tv, ok := focused.(*tview.TextView); ok {
 				scrollHorizontally(tv, true)
 				return nil
 			}
 		}
 
-		if activeKeymaps.HalfPageUp.Matches(event) {
+		if keymap.HalfPageUp.Matches(event) {
 			if tv, ok := focused.(*tview.TextView); ok {
 				scrollHalfPage(tv, true)
 				return nil
 			}
 		}
 
-		if activeKeymaps.HalfPageDown.Matches(event) {
+		if keymap.HalfPageDown.Matches(event) {
 			if tv, ok := focused.(*tview.TextView); ok {
 				scrollHalfPage(tv, false)
 				return nil
 			}
 		}
 
-		if activeKeymaps.FilterCursorRight.Matches(event) {
+		if keymap.CursorRight.Matches(event) {
 			if filterInput.HasFocus() {
 				return tcell.NewEventKey(tcell.KeyRight, ' ', tcell.ModNone)
 			}
 		}
 
-		if activeKeymaps.FilterCursorLeft.Matches(event) {
+		if keymap.CursorLeft.Matches(event) {
 			if filterInput.HasFocus() {
 				return tcell.NewEventKey(tcell.KeyLeft, ' ', tcell.ModNone)
 			}
 		}
 
-		if activeKeymaps.FocusInputPaneUp.Matches(event) {
-			if filterInput.HasFocus() {
-				if !doc.options.HideInputPane {
-					app.SetFocus(inputView)
-				} else {
-					app.SetFocus(outputView)
-				}
-				return nil
-			}
-		}
-
-		if activeKeymaps.FocusInputPaneLeft.Matches(event) {
+		if keymap.FocusInputPane.Matches(event) {
 			if !doc.options.HideInputPane {
 				app.SetFocus(inputView)
 				return nil
 			}
 		}
 
-		if activeKeymaps.FocusOutputPane.Matches(event) {
+		if keymap.FocusOutputPane.Matches(event) {
 			app.SetFocus(outputView)
 			return nil
 		}
 
-		if activeKeymaps.FocusFilterInput.Matches(event) {
+		if keymap.FocusFilterInput.Matches(event) {
 			app.SetFocus(filterInput)
 			return nil
 		}
 
-		if activeKeymaps.NextFocus.Matches(event) {
+		if keymap.NextFocus.Matches(event) {
 			if inputView.HasFocus() {
 				app.SetFocus(outputView)
 				return nil
@@ -906,13 +878,9 @@ func createApp(doc Document) *tview.Application {
 				app.SetFocus(filterInput)
 				return nil
 			}
-
-			if filterInput.HasFocus() {
-				return tcell.NewEventKey(tcell.KeyDown, ' ', tcell.ModNone)
-			}
 		}
 
-		if activeKeymaps.PreviousFocus.Matches(event) {
+		if keymap.PreviousFocus.Matches(event) {
 			if inputView.HasFocus() {
 				app.SetFocus(filterInput)
 				return nil
@@ -922,13 +890,9 @@ func createApp(doc Document) *tview.Application {
 				app.SetFocus(inputView)
 				return nil
 			}
-
-			if filterInput.HasFocus() {
-				return tcell.NewEventKey(tcell.KeyUp, ' ', tcell.ModNone)
-			}
 		}
 
-		if activeKeymaps.ToggleInputPane.Matches(event) {
+		if keymap.ToggleInputPane.Matches(event) {
 			mutex.Lock()
 			hidden := doc.options.HideInputPane
 			mutex.Unlock()
@@ -952,16 +916,8 @@ func createApp(doc Document) *tview.Application {
 			return nil
 		}
 
-		if tv, ok := focused.(*tview.TextView); ok {
-			if activeKeymaps.TextviewPageUp.Matches(event) {
-				return tcell.NewEventKey(tcell.KeyCtrlB, ' ', tcell.ModNone)
-			}
-
-			if activeKeymaps.TextviewPageDown.Matches(event) {
-				return tcell.NewEventKey(tcell.KeyCtrlF, ' ', tcell.ModNone)
-			}
-
-			if activeKeymaps.TextviewEnd.Matches(event) {
+		if keymap.ScrollToBottom.Matches(event) {
+			if tv, ok := focused.(*tview.TextView); ok {
 				// tview handles G natively but does not
 				// redraw, so the scroll indicator doesn't
 				// update. So we handle G ourselves and force a
@@ -969,6 +925,12 @@ func createApp(doc Document) *tview.Application {
 				tv.ScrollToEnd()
 				app.ForceDraw()
 				return nil
+			}
+		}
+
+		if keymap.ScrollToTop.Matches(event) {
+			if _, ok := focused.(*tview.TextView); ok {
+				return tcell.NewEventKey(tcell.KeyRune, 'g', tcell.ModNone)
 			}
 		}
 

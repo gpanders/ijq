@@ -121,29 +121,6 @@ func TestDocumentExecError(t *testing.T) {
 	assert.Empty(t, buffer.String())
 }
 
-func TestNormalizeOverlayEvent(t *testing.T) {
-	keymap := DefaultKeymap()
-
-	event := normalizeOverlayEvent(tcell.NewEventKey(tcell.KeyCtrlN, ' ', tcell.ModNone), keymap)
-	assert.Equal(t, tcell.KeyDown, event.Key())
-
-	event = normalizeOverlayEvent(tcell.NewEventKey(tcell.KeyCtrlP, ' ', tcell.ModNone), keymap)
-	assert.Equal(t, tcell.KeyUp, event.Key())
-
-	event = normalizeOverlayEvent(tcell.NewEventKey(tcell.KeyCtrlV, ' ', tcell.ModNone), keymap)
-	assert.Equal(t, tcell.KeyPgDn, event.Key())
-
-	event = normalizeOverlayEvent(tcell.NewEventKey(tcell.KeyCtrlD, ' ', tcell.ModNone), keymap)
-	assert.Equal(t, tcell.KeyPgDn, event.Key())
-
-	event = normalizeOverlayEvent(tcell.NewEventKey(tcell.KeyCtrlU, ' ', tcell.ModNone), keymap)
-	assert.Equal(t, tcell.KeyPgUp, event.Key())
-
-	original := tcell.NewEventKey(tcell.KeyRune, 'x', tcell.ModNone)
-	event = normalizeOverlayEvent(original, keymap)
-	assert.Equal(t, original, event)
-}
-
 func TestBuildMainHelpTextUsesConfiguredBindings(t *testing.T) {
 	keymap := DefaultKeymap()
 	keymap.ToggleMenu = KeyBindings{{key: tcell.KeyRune, rune: 'm', mods: tcell.ModAlt}}

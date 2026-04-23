@@ -57,7 +57,7 @@ keymaps {
 	toggle-input-pane Ctrl-T
 	save-filter-history Alt+h
 	toggle-menu Alt+o
-	textview-end g
+	scroll-to-bottom g
 }
 `
 
@@ -74,7 +74,7 @@ keymaps {
 	assert.Equal(t, KeyBindings{{key: tcell.KeyCtrlT}}, cfg.Keymap.ToggleInputPane)
 	assert.Equal(t, KeyBindings{{key: tcell.KeyRune, rune: 'h', mods: tcell.ModAlt}}, cfg.Keymap.SaveFilterHistory)
 	assert.Equal(t, KeyBindings{{key: tcell.KeyRune, rune: 'o', mods: tcell.ModAlt}}, cfg.Keymap.ToggleMenu)
-	assert.Equal(t, KeyBindings{{key: tcell.KeyRune, rune: 'g'}}, cfg.Keymap.TextviewEnd)
+	assert.Equal(t, KeyBindings{{key: tcell.KeyRune, rune: 'g'}}, cfg.Keymap.ScrollToBottom)
 	assert.Equal(t, DefaultKeymap().SubmitFilter, cfg.Keymap.SubmitFilter)
 }
 
