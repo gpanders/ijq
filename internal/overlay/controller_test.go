@@ -1,6 +1,7 @@
 package overlay
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/gdamore/tcell/v2"
@@ -31,6 +32,8 @@ func runeEvent(r rune) *tcell.EventKey {
 }
 
 func TestHandleInputReturnsEventWhenClosed(t *testing.T) {
+	t.Parallel()
+
 	controller := NewController(tview.NewApplication(), tview.NewPages(), "overlay", Callbacks{})
 	event := keyEvent(tcell.KeyEnter)
 
@@ -38,6 +41,8 @@ func TestHandleInputReturnsEventWhenClosed(t *testing.T) {
 }
 
 func TestHandleInputGlobalNavigationAndClose(t *testing.T) {
+	t.Parallel()
+
 	controller := newOpenController(t, Callbacks{})
 
 	event := controller.HandleInput(runeEvent('j'))
@@ -52,6 +57,8 @@ func TestHandleInputGlobalNavigationAndClose(t *testing.T) {
 }
 
 func TestHandleInputConfigureModeTogglesAndReturnsRoot(t *testing.T) {
+	t.Parallel()
+
 	var toggledOption options.Option
 
 	controller := newOpenController(t, Callbacks{
@@ -80,13 +87,15 @@ func TestHandleInputConfigureModeTogglesAndReturnsRoot(t *testing.T) {
 }
 
 func TestHandleInputHistoryFilterCancelRestoresQuery(t *testing.T) {
+	t.Parallel()
+
 	controller := newOpenController(t, Callbacks{
 		LoadHistoryEntries: func() []string {
 			return []string{".foo", ".bar"}
 		},
 	})
 
-	controller.rootMenu.SetCurrentItem(2)
+	controller.rootMenu.SetCurrentItem(4)
 	controller.HandleInput(keyEvent(tcell.KeyEnter))
 	assert.Equal(t, modeHistoryList, controller.mode)
 
@@ -99,20 +108,22 @@ func TestHandleInputHistoryFilterCancelRestoresQuery(t *testing.T) {
 	assert.True(t, controller.historyFilterVisible)
 
 	controller.historyFilterInput.SetText("bar")
-	event = controller.HandleInput(keyEvent(tcell.KeyEsc))
+	controller.HandleInput(keyEvent(tcell.KeyEsc))
 	assert.Equal(t, modeHistoryList, controller.mode)
 	assert.Equal(t, "foo", controller.historyQuery)
 	assert.True(t, controller.historyFilterVisible)
 }
 
 func TestHandleInputHistoryFilterAllowsTypingNavigationKeys(t *testing.T) {
+	t.Parallel()
+
 	controller := newOpenController(t, Callbacks{
 		LoadHistoryEntries: func() []string {
 			return []string{".foo", ".bar"}
 		},
 	})
 
-	controller.rootMenu.SetCurrentItem(2)
+	controller.rootMenu.SetCurrentItem(4)
 	controller.HandleInput(keyEvent(tcell.KeyEnter))
 	controller.HandleInput(runeEvent('/'))
 	assert.Equal(t, modeHistoryFilter, controller.mode)
@@ -139,13 +150,15 @@ func TestHandleInputHistoryFilterAllowsTypingNavigationKeys(t *testing.T) {
 }
 
 func TestHandleInputHistoryFilterCancelEventIsConsumed(t *testing.T) {
+	t.Parallel()
+
 	controller := newOpenController(t, Callbacks{
 		LoadHistoryEntries: func() []string {
 			return []string{".foo", ".bar"}
 		},
 	})
 
-	controller.rootMenu.SetCurrentItem(2)
+	controller.rootMenu.SetCurrentItem(4)
 	controller.HandleInput(keyEvent(tcell.KeyEnter))
 	controller.HandleInput(runeEvent('/'))
 	assert.Equal(t, modeHistoryFilter, controller.mode)
@@ -156,6 +169,8 @@ func TestHandleInputHistoryFilterCancelEventIsConsumed(t *testing.T) {
 }
 
 func TestHandleInputHistoryDeleteConfirmFlow(t *testing.T) {
+	t.Parallel()
+
 	entries := []string{"one", "two"}
 	deletedIndex := -1
 
@@ -170,7 +185,7 @@ func TestHandleInputHistoryDeleteConfirmFlow(t *testing.T) {
 		},
 	})
 
-	controller.rootMenu.SetCurrentItem(2)
+	controller.rootMenu.SetCurrentItem(4)
 	controller.HandleInput(keyEvent(tcell.KeyEnter))
 	controller.history.SetCurrentItem(1)
 
@@ -187,6 +202,8 @@ func TestHandleInputHistoryDeleteConfirmFlow(t *testing.T) {
 }
 
 func TestHandleInputHistoryEnterAppliesEntryAndCloses(t *testing.T) {
+	t.Parallel()
+
 	appliedExpression := ""
 
 	controller := newOpenController(t, Callbacks{
@@ -198,7 +215,7 @@ func TestHandleInputHistoryEnterAppliesEntryAndCloses(t *testing.T) {
 		},
 	})
 
-	controller.rootMenu.SetCurrentItem(2)
+	controller.rootMenu.SetCurrentItem(4)
 	controller.HandleInput(keyEvent(tcell.KeyEnter))
 
 	event := controller.HandleInput(keyEvent(tcell.KeyEnter))
@@ -207,14 +224,68 @@ func TestHandleInputHistoryEnterAppliesEntryAndCloses(t *testing.T) {
 	assert.False(t, controller.IsOpen())
 }
 
+func TestHandleInputCopyActionsReturnToRoot(t *testing.T) {
+	t.Parallel()
+
+	copyFilterCalled := false
+	copyOutputCalled := false
+
+	controller := newOpenController(t, Callbacks{
+		CopyFilterToClipboard: func() error {
+			copyFilterCalled = true
+			return nil
+		},
+		CopyOutputToClipboard: func() error {
+			copyOutputCalled = true
+			return nil
+		},
+	})
+
+	controller.rootMenu.SetCurrentItem(2)
+	event := controller.HandleInput(keyEvent(tcell.KeyEnter))
+	assert.Nil(t, event)
+	assert.True(t, copyFilterCalled)
+	assert.Equal(t, modeRoot, controller.mode)
+	assert.Equal(t, "Menu (filter copied to clipboard)", controller.rootMenu.GetTitle())
+
+	controller.rootMenu.SetCurrentItem(3)
+	event = controller.HandleInput(keyEvent(tcell.KeyEnter))
+	assert.Nil(t, event)
+	assert.True(t, copyOutputCalled)
+	assert.Equal(t, modeRoot, controller.mode)
+	assert.Equal(t, "Menu (output copied to clipboard)", controller.rootMenu.GetTitle())
+}
+
+func TestHandleInputCopyActionUnavailable(t *testing.T) {
+	t.Parallel()
+
+	controller := newOpenController(t, Callbacks{})
+	controller.rootMenu.SetCurrentItem(2)
+	assert.Nil(t, controller.HandleInput(keyEvent(tcell.KeyEnter)))
+	assert.Equal(t, "Menu (copy action unavailable)", controller.rootMenu.GetTitle())
+}
+
+func TestHandleInputCopyActionError(t *testing.T) {
+	t.Parallel()
+
+	controller := newOpenController(t, Callbacks{
+		CopyOutputToClipboard: func() error { return errors.New("copy failed") },
+	})
+	controller.rootMenu.SetCurrentItem(3)
+	assert.Nil(t, controller.HandleInput(keyEvent(tcell.KeyEnter)))
+	assert.Equal(t, "Menu (copy failed)", controller.rootMenu.GetTitle())
+}
+
 func TestHandleInputCheatSheetAndKeybindingsReturnToRoot(t *testing.T) {
+	t.Parallel()
+
 	controller := newOpenController(t, Callbacks{
 		ActiveKeybindings: func() []KeybindingEntry {
 			return []KeybindingEntry{{Action: "submit", Keybinding: "Enter"}}
 		},
 	})
 
-	controller.rootMenu.SetCurrentItem(4)
+	controller.rootMenu.SetCurrentItem(6)
 	event := controller.HandleInput(keyEvent(tcell.KeyEnter))
 	assert.Nil(t, event)
 	assert.Equal(t, modeCheatSheet, controller.mode)
@@ -223,7 +294,7 @@ func TestHandleInputCheatSheetAndKeybindingsReturnToRoot(t *testing.T) {
 	assert.Nil(t, event)
 	assert.Equal(t, modeRoot, controller.mode)
 
-	controller.rootMenu.SetCurrentItem(3)
+	controller.rootMenu.SetCurrentItem(5)
 	event = controller.HandleInput(keyEvent(tcell.KeyEnter))
 	assert.Nil(t, event)
 	assert.Equal(t, modeKeybindings, controller.mode)

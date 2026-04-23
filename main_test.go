@@ -35,6 +35,8 @@ import (
 )
 
 func TestDocumentReadFrom(t *testing.T) {
+	t.Parallel()
+
 	testMsg := "hello world"
 	testReader := strings.NewReader(testMsg)
 
@@ -46,6 +48,8 @@ func TestDocumentReadFrom(t *testing.T) {
 }
 
 func TestDocumentWriteTo(t *testing.T) {
+	t.Parallel()
+
 	testMsg := "hello world"
 	testReader := strings.NewReader(testMsg)
 
@@ -69,8 +73,9 @@ func TestDocumentWriteTo(t *testing.T) {
 }
 
 func TestDocumentWithFilterPreservesFields(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	t.Parallel()
+
+	ctx := t.Context()
 
 	cfg := DefaultConfig()
 	opts := options.Options{
@@ -95,6 +100,8 @@ func TestDocumentWithFilterPreservesFields(t *testing.T) {
 }
 
 func TestDocumentExecError(t *testing.T) {
+	t.Parallel()
+
 	testMsg := "hello world"
 	testReader := strings.NewReader(testMsg)
 
@@ -122,6 +129,8 @@ func TestDocumentExecError(t *testing.T) {
 }
 
 func TestBuildMainHelpTextUsesConfiguredBindings(t *testing.T) {
+	t.Parallel()
+
 	keymap := DefaultKeymap()
 	keymap.ToggleMenu = KeyBindings{{key: tcell.KeyRune, rune: 'm', mods: tcell.ModAlt}}
 	keymap.SubmitFilter = KeyBindings{{key: tcell.KeyRune, rune: 's', mods: tcell.ModCtrl}}
@@ -132,6 +141,7 @@ func TestBuildMainHelpTextUsesConfiguredBindings(t *testing.T) {
 	assert.Contains(t, help, "Ctrl-s")
 }
 
+// These tests change process-wide arguments and must run serially.
 func TestParseArgsLoadsFilterFromFile(t *testing.T) {
 	filterFile := filepath.Join(t.TempDir(), "filter.jq")
 	require.NoError(t, os.WriteFile(filterFile, []byte(".foo\n"), 0o644))
@@ -178,6 +188,8 @@ func TestParseArgsTreatsFirstArgAsFilterWhenMultiplePositionals(t *testing.T) {
 }
 
 func TestParseArgsVersionFlagPrintsAndExits(t *testing.T) {
+	t.Parallel()
+
 	if os.Getenv("IJQ_PARSEARGS_VERSION_HELPER") == "1" {
 		oldArgs := os.Args
 		oldVersion := Version

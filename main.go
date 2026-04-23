@@ -31,6 +31,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -40,11 +41,12 @@ import (
 	"codeberg.org/gpanders/ijq/internal/overlay"
 )
 
-// Special characters that, if present in a JSON key, need to be quoted in the
-// jq filter
+// Special characters that, if present in a JSON key, need to be quoted in the jq filter
 const specialChars string = ".-:$/"
 
 const alphabet string = "abcdefghijklmnopqrstuvwxyz"
+
+const copyOutputTimeout = 5 * time.Second
 
 var Version string
 
@@ -79,8 +81,7 @@ func (d Document) WriteTo(w io.Writer) (n int64, err error) {
 		opts.RawOutput = false
 		w = tview.ANSIWriter(p)
 
-		// Mark the pane as dirty so the text view is cleared before
-		// new output is written.
+		// Mark the pane as dirty so the text view is cleared before new output is written.
 		p.dirty = true
 		defer func() {
 			if p.dirty && err == nil {
@@ -275,17 +276,27 @@ func buildMainHelpText(keymap Keymap) string {
 	return fmt.Sprintf("[::d]%s[::-] [::b]menu[::-]   [::d]Ctrl-C[::-] [::b]quit[::-]   [::d]%s[::-] [::b]quit and write output[::-]", menuKey, submitKey)
 }
 
-func createApp(doc Document) *tview.Application {
-	app := tview.NewApplication()
-
-	// tview uses colors for a dark background by default, so reset some of
-	// the styles to simply use the colors from the terminal to better
-	// support light color themes
+func init() {
+	// tview uses colors for a dark background by default, so use the terminal's colors instead.
 	tview.Styles.PrimaryTextColor = tcell.ColorDefault
 	tview.Styles.PrimitiveBackgroundColor = tcell.ColorDefault
 	tview.Styles.BorderColor = tcell.ColorDefault
 	tview.Styles.TitleColor = tcell.ColorDefault
 	tview.Styles.GraphicsColor = tcell.ColorDefault
+}
+
+func createApp(doc Document, screen tcell.Screen) *tview.Application {
+	app := tview.NewApplication()
+
+	var clipboardTTY io.Writer
+	if screen != nil {
+		app.SetScreen(screen)
+
+		if tty, ok := screen.Tty(); ok {
+			clipboardTTY = tty
+		}
+	}
+	clipboard := NewClipboard(clipboardTTY)
 
 	inputView := tview.NewTextView()
 	inputView.SetDynamicColors(true).SetWrap(false).SetBorder(true)
@@ -305,19 +316,57 @@ func createApp(doc Document) *tview.Application {
 
 	var filterHistory history
 	filterHistory.Init(string(doc.options.HistoryFile))
-	// If submit-filter includes Enter, we need SetDoneFunc to handle submission so
-	// Enter still works with autocomplete selection.
-	submitOnEnter := doc.config.Keymap.SubmitFilter.Matches(
-		tcell.NewEventKey(tcell.KeyEnter, ' ', tcell.ModNone),
+
+	var (
+		mutex  sync.Mutex
+		cancel context.CancelFunc = func() {}
 	)
+
+	copyFilterToClipboard := func() error {
+		mutex.Lock()
+		filter := doc.filter
+		mutex.Unlock()
+
+		_, err := io.WriteString(clipboard, filter)
+		return err
+	}
+
+	copyOutputToClipboard := func() error {
+		mutex.Lock()
+		current := doc
+		mutex.Unlock()
+
+		ctx, cancel := context.WithTimeout(context.Background(), copyOutputTimeout)
+		defer cancel()
+		current.ctx = ctx
+
+		// Buffer the output to ensure only a single OSC 52 sequence is emitted.
+		var buf bytes.Buffer
+		if _, err := current.WriteTo(&buf); err != nil {
+			return err
+		}
+
+		_, err := buf.WriteTo(clipboard)
+		return err
+	}
+
 	submitFilter := func() {
+		// The app's screen (and associated tty) are released when the app is stopped, so
+		// write to the clipboard before stopping the app.
+		var clipboardErr error
+		if doc.config.CopyFilterToClipboardOnExit {
+			clipboardErr = copyFilterToClipboard()
+		}
+
 		app.Stop()
 
+		if clipboardErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to copy filter to clipboard: %v\n", clipboardErr)
+		}
 		fmt.Fprintln(os.Stderr, doc.filter)
 
-		// Enable or disable colors depending on if
-		// stdout is a tty, respecting options set by
-		// the user
+		// Enable or disable colors depending on if stdout is a tty, respecting options set
+		// by the user
 		isTty := term.IsTerminal(int(os.Stdout.Fd()))
 		if !isTty && !bool(doc.options.ForceColor) {
 			doc.options.Monochrome = true
@@ -332,21 +381,15 @@ func createApp(doc Document) *tview.Application {
 		}
 	}
 
-	var (
-		mutex  sync.Mutex
-		cancel context.CancelFunc = func() {}
-	)
-
 	cond := sync.NewCond(&mutex)
 
 	// Initialize pending to true so that the output pane will update with the initial filter
 	pending := true
 
-	// Create a cancellable context when writing to the output view. If the
-	// filter input changes, the context is cancelled and the process is
-	// killed. This must be set before filterInput is created because
-	// tview's SetAutocompleteFunc triggers an initial autocomplete that
-	// spawns a goroutine reading doc.
+	// Create a cancellable context when writing to the output view. If the filter input
+	// changes, the context is cancelled and the process is killed. This must be set before
+	// filterInput is created because tview's SetAutocompleteFunc triggers an initial
+	// autocomplete that spawns a goroutine reading doc.
 	doc.ctx, cancel = context.WithCancel(context.Background())
 
 	filterMap := make(map[string][]string)
@@ -378,7 +421,7 @@ func createApp(doc Document) *tview.Application {
 			})
 		}).
 		SetDoneFunc(func(key tcell.Key) {
-			if key == tcell.KeyEnter && submitOnEnter {
+			if doc.config.Keymap.SubmitFilter.Matches(tcell.NewEventKey(key, ' ', tcell.ModNone)) {
 				submitFilter()
 			}
 		}).
@@ -484,10 +527,9 @@ func createApp(doc Document) *tview.Application {
 		return "exists", expression, nil
 	}
 
-	// Initialize the initial line counts to some large number. If the
-	// input is small, this will be updated to the correct value before it
-	// is ever displayed in the UI. But for large inputs (which will take
-	// longer to calculate the correct value), this is a better initial
+	// Initialize the initial line counts to some large number. If the input is small, this will
+	// be updated to the correct value before it is ever displayed in the UI. But for large
+	// inputs (which will take longer to calculate the correct value), this is a better initial
 	// guess.
 	var (
 		inputLineCount  atomic.Int64
@@ -510,6 +552,7 @@ func createApp(doc Document) *tview.Application {
 		}
 
 		inputLineCount.Store(int64(strings.Count(inputView.GetText(false), "\n")))
+		app.Draw()
 	}()
 
 	go func() {
@@ -522,10 +565,9 @@ func createApp(doc Document) *tview.Application {
 			d := doc
 			pending = false
 
-			// Re-initialize the cancellable context while still holding the
-			// lock so that concurrent calls to cancel() in
-			// queueDocumentUpdate always operate on a fully constructed
-			// context.
+			// Re-initialize the cancellable context while still holding the lock so
+			// that concurrent calls to cancel() in queueDocumentUpdate always operate
+			// on a fully constructed context.
 			d.ctx, cancel = context.WithCancel(context.Background())
 			cond.L.Unlock()
 
@@ -554,7 +596,7 @@ func createApp(doc Document) *tview.Application {
 	viewFlex := tview.NewFlex().
 		AddItem(inputView, 0, inputPaneProportion, false).
 		AddItem(outputView, 0, 1, false)
-	grid := tview.NewGrid().
+	mainGrid := tview.NewGrid().
 		SetRows(0, 3, 4, 1).
 		SetColumns(0).
 		AddItem(viewFlex, 0, 0, 1, 1, 0, 0, false).
@@ -568,42 +610,33 @@ func createApp(doc Document) *tview.Application {
 			AddItem(tview.NewBox(), 0, 1, false), 2, 0, 1, 1, 0, 0, false).
 		AddItem(helpView, 3, 0, 1, 1, 0, 0, false)
 
-	pages := tview.NewPages().
-		AddPage("main", grid, true, true)
+	notificationView := tview.NewTextView()
+	notificationView.SetBorder(true)
+	notificationView.SetTextAlign(tview.AlignCenter)
 
-	historyNotice := tview.NewTextView()
-	historyNotice.SetBorder(true)
-	historyNotice.SetTitle("History")
-	historyNotice.SetTextAlign(tview.AlignCenter)
-
-	historyNoticeContainer := tview.NewGrid().
+	notificationGrid := tview.NewGrid().
 		SetRows(0, 3, 0).
 		SetColumns(0, 24, 0).
-		AddItem(historyNotice, 1, 1, 1, 1, 0, 0, true)
+		AddItem(notificationView, 1, 1, 1, 1, 0, 0, true)
 
-	const historyNoticePage = "history-notice"
-	pages.AddPage(historyNoticePage, historyNoticeContainer, true, false)
+	const (
+		mainPage         = "main"
+		notificationPage = "notification"
+	)
 
-	isHistoryNoticeOpen := false
-	showHistoryNotice := func(message string) {
-		historyNotice.SetText(message)
+	pages := tview.NewPages().
+		AddPage(mainPage, mainGrid, true, true).
+		AddPage(notificationPage, notificationGrid, true, false)
+
+	showNotification := func(message string) {
+		notificationView.SetText(message)
 
 		width := max(tview.TaggedStringWidth(message)+4, 24)
 
-		historyNoticeContainer.SetColumns(0, width, 0)
-		historyNoticeContainer.SetRows(0, 3, 0)
-		pages.ShowPage(historyNoticePage)
-		pages.SendToFront(historyNoticePage)
-		isHistoryNoticeOpen = true
-	}
-
-	closeHistoryNotice := func() {
-		if !isHistoryNoticeOpen {
-			return
-		}
-
-		pages.HidePage(historyNoticePage)
-		isHistoryNoticeOpen = false
+		notificationGrid.SetColumns(0, width, 0)
+		notificationGrid.SetRows(0, 3, 0)
+		pages.ShowPage(notificationPage)
+		pages.SendToFront(notificationPage)
 	}
 
 	overlayPopup := overlay.NewController(app, pages, "overlay", overlay.Callbacks{
@@ -611,8 +644,8 @@ func createApp(doc Document) *tview.Application {
 		ToggleConfigureRow: func(option options.Option) {
 			switch option.(type) {
 			case *options.HideInputPane:
-				// This option only affects the ijq UI, not jq
-				// itself, so we handle it differently
+				// This option only affects the ijq UI, not jq itself, so we handle
+				// it differently
 				mutex.Lock()
 				doc.options.HideInputPane = !doc.options.HideInputPane
 				hidden := doc.options.HideInputPane
@@ -650,6 +683,8 @@ func createApp(doc Document) *tview.Application {
 				return "", nil
 			}
 		},
+		CopyFilterToClipboard: copyFilterToClipboard,
+		CopyOutputToClipboard: copyOutputToClipboard,
 		LoadHistoryEntries: func() []string {
 			return filterHistory.Entries()
 		},
@@ -682,8 +717,8 @@ func createApp(doc Document) *tview.Application {
 		focused := app.GetFocus()
 		keymap := doc.config.Keymap
 
-		if isHistoryNoticeOpen {
-			closeHistoryNotice()
+		if p, _ := pages.GetFrontPage(); p == notificationPage {
+			pages.HidePage(notificationPage)
 			return nil
 		}
 
@@ -754,22 +789,42 @@ func createApp(doc Document) *tview.Application {
 		if keymap.SaveFilterHistory.Matches(event) {
 			status, expression, err := saveCurrentFilterToHistory()
 			if err != nil {
-				showHistoryNotice("Failed to save filter to history")
+				showNotification("Failed to save filter to history")
 				return nil
 			}
 
 			switch status {
 			case "added":
 				expression = strings.ReplaceAll(expression, "\n", " ")
-				showHistoryNotice(fmt.Sprintf("Added %s to history", expression))
+				showNotification(fmt.Sprintf("Added %s to history", expression))
 			case "exists":
-				showHistoryNotice("Filter already in history")
+				showNotification("Filter already in history")
 			case "empty":
-				showHistoryNotice("Filter is empty")
+				showNotification("Filter is empty")
 			case "disabled":
-				showHistoryNotice("History is disabled")
+				showNotification("History is disabled")
 			}
 
+			return nil
+		}
+
+		if keymap.CopyFilterToClipboard.Matches(event) {
+			if err := copyFilterToClipboard(); err != nil {
+				showNotification("Failed to copy filter to clipboard")
+				return nil
+			}
+
+			showNotification("Filter copied to clipboard")
+			return nil
+		}
+
+		if keymap.CopyOutputToClipboard.Matches(event) {
+			if err := copyOutputToClipboard(); err != nil {
+				showNotification("Failed to copy output to clipboard")
+				return nil
+			}
+
+			showNotification("Output copied to clipboard")
 			return nil
 		}
 
@@ -918,9 +973,8 @@ func createApp(doc Document) *tview.Application {
 
 		if keymap.ScrollToBottom.Matches(event) {
 			if tv, ok := focused.(*tview.TextView); ok {
-				// tview handles G natively but does not
-				// redraw, so the scroll indicator doesn't
-				// update. So we handle G ourselves and force a
+				// tview handles G natively but does not redraw, so the scroll
+				// indicator doesn't update. So we handle G ourselves and force a
 				// redraw
 				tv.ScrollToEnd()
 				app.ForceDraw()
@@ -958,7 +1012,7 @@ func createApp(doc Document) *tview.Application {
 		}
 	})
 
-	app.SetRoot(pages, true).EnableMouse(true).SetFocus(grid)
+	app.SetRoot(pages, true).EnableMouse(true).SetFocus(mainGrid)
 
 	return app
 }
@@ -1015,7 +1069,13 @@ func main() {
 		}
 	}
 
-	app := createApp(doc)
+	screen, err := tcell.NewScreen()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	app := createApp(doc, screen)
+
 	if err := app.Run(); err != nil {
 		log.Fatalln(err)
 	}

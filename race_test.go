@@ -15,6 +15,8 @@ import (
 )
 
 func TestAppRace(t *testing.T) {
+	t.Parallel()
+
 	if runtime.GOOS == "windows" {
 		t.Skip("race reproduction test relies on a shell helper script")
 	}
@@ -39,13 +41,11 @@ func TestAppRace(t *testing.T) {
 
 	// Run the app on a simulation screen so we can deterministically inject key
 	// events without requiring a real terminal.
-	app := createApp(doc)
 	screen := tcell.NewSimulationScreen("")
 	if err := screen.Init(); err != nil {
 		t.Fatalf("init simulation screen: %v", err)
 	}
-
-	app.SetScreen(screen)
+	app := createApp(doc, screen)
 
 	// app.Run blocks until the app exits, so run it in the background and collect
 	// any returned error through a channel.

@@ -23,7 +23,6 @@ const (
 	testStartupTimeout = 3 * time.Second
 	testActionTimeout  = 2 * time.Second
 	testPollInterval   = 10 * time.Millisecond
-	testRedrawDelay    = 100 * time.Millisecond
 
 	testJQCommand = "./testdata/catok"
 )
@@ -38,12 +37,16 @@ type testApp struct {
 
 func newTestApp(t *testing.T, input string, historyEntries []string) *testApp {
 	t.Helper()
+	return newTestAppWithConfig(t, input, historyEntries, DefaultConfig())
+}
+
+func newTestAppWithConfig(t *testing.T, input string, historyEntries []string, cfg Config) *testApp {
+	t.Helper()
 
 	if runtime.GOOS == "windows" {
 		t.Skip("ui tests rely on the shell-based testdata/catok helper")
 	}
 
-	cfg := DefaultConfig()
 	cfg.JQCommand = testJQCommand
 	cfg.HistoryFile = ""
 
@@ -68,10 +71,8 @@ func newTestApp(t *testing.T, input string, historyEntries []string) *testApp {
 		config: cfg,
 	}
 
-	app := createApp(doc)
 	screen := tcell.NewSimulationScreen("")
-	require.NoError(t, screen.Init())
-	app.SetScreen(screen)
+	app := createApp(doc, screen)
 	screen.SetSize(testScreenWidth, testScreenHeight)
 
 	ta := &testApp{
@@ -91,6 +92,12 @@ func newTestApp(t *testing.T, input string, historyEntries []string) *testApp {
 	ta.waitForText("Filter", testStartupTimeout)
 	ta.waitForText("Error", testStartupTimeout)
 	ta.waitForText("menu", testStartupTimeout)
+	if input != "" {
+		firstLine := strings.Split(input, "\n")[0]
+		ta.waitFor(func() bool {
+			return strings.Count(strings.Join(ta.rows(), "\n"), firstLine) == 2
+		}, fmt.Sprintf("%q to appear in both panes", firstLine), testStartupTimeout)
+	}
 
 	t.Cleanup(ta.stop)
 
@@ -118,14 +125,14 @@ func (ta *testApp) postKey(key tcell.Key, mod tcell.ModMask) {
 	ta.t.Helper()
 	ta.app.QueueEvent(tcell.NewEventKey(key, ' ', mod))
 	if key != tcell.KeyCtrlC {
-		time.Sleep(testRedrawDelay)
+		ta.app.QueueUpdate(func() {})
 	}
 }
 
 func (ta *testApp) postRune(r rune) {
 	ta.t.Helper()
 	ta.app.QueueEvent(tcell.NewEventKey(tcell.KeyRune, r, tcell.ModNone))
-	time.Sleep(testRedrawDelay)
+	ta.app.QueueUpdate(func() {})
 }
 
 func (ta *testApp) postRunes(text string) {
@@ -266,6 +273,8 @@ func generateLargeInput(lines int) string {
 }
 
 func TestUILayout(t *testing.T) {
+	t.Parallel()
+
 	ta := newTestApp(t, `{"key":"value"}`, nil)
 
 	inputRow := ta.findRowOf("Input (Top)")
@@ -297,6 +306,8 @@ func TestUILayout(t *testing.T) {
 }
 
 func TestUIFilterInput(t *testing.T) {
+	t.Parallel()
+
 	ta := newTestApp(t, `{"key":"value"}`, nil)
 
 	ta.requireText(".")
@@ -314,7 +325,31 @@ func TestUIFilterInput(t *testing.T) {
 	ta.requireNoText(".foo.bar")
 }
 
+func TestUICopyFilterKeybindingReportsUnavailableTTY(t *testing.T) {
+	t.Parallel()
+
+	cfg := DefaultConfig()
+	cfg.Keymap.CopyFilterToClipboard = KeyBindings{{key: tcell.KeyCtrlY}}
+	ta := newTestAppWithConfig(t, `{"key":"value"}`, nil, cfg)
+
+	ta.postKey(tcell.KeyCtrlY, tcell.ModNone)
+	ta.waitForText("Failed to copy filter to clipboard", testActionTimeout)
+}
+
+func TestUICopyOutputKeybindingReportsUnavailableTTY(t *testing.T) {
+	t.Parallel()
+
+	cfg := DefaultConfig()
+	cfg.Keymap.CopyOutputToClipboard = KeyBindings{{key: tcell.KeyCtrlY}}
+	ta := newTestAppWithConfig(t, `{"key":"value"}`, nil, cfg)
+
+	ta.postKey(tcell.KeyCtrlY, tcell.ModNone)
+	ta.waitForText("Failed to copy output to clipboard", testActionTimeout)
+}
+
 func TestUIFocusMovement(t *testing.T) {
+	t.Parallel()
+
 	ta := newTestApp(t, generateLargeInput(100), nil)
 
 	expectedFilter := "."
@@ -363,6 +398,8 @@ func TestUIFocusMovement(t *testing.T) {
 }
 
 func TestUIScrollKeybindingsAndIndicator(t *testing.T) {
+	t.Parallel()
+
 	ta := newTestApp(t, generateLargeInput(100), nil)
 
 	ta.postKey(tcell.KeyUp, tcell.ModShift)
@@ -410,11 +447,15 @@ func TestUIScrollKeybindingsAndIndicator(t *testing.T) {
 }
 
 func TestUIOverlayMenuToggle(t *testing.T) {
+	t.Parallel()
+
 	ta := newTestApp(t, `{"key":"value"}`, nil)
 
 	ta.openMenu()
 	ta.requireText("Configure")
 	ta.requireText("Save current filter to history")
+	ta.requireText("Copy filter text to clipboard")
+	ta.requireText("Copy output to clipboard")
 	ta.requireText("Manage history")
 	ta.requireText("Keybindings")
 	ta.requireText("Cheat sheet")
@@ -427,6 +468,8 @@ func TestUIOverlayMenuToggle(t *testing.T) {
 }
 
 func TestUIOverlayMenuConfigure(t *testing.T) {
+	t.Parallel()
+
 	ta := newTestApp(t, `{"key":"value"}`, nil)
 
 	rows := []string{
@@ -468,10 +511,12 @@ func TestUIOverlayMenuConfigure(t *testing.T) {
 }
 
 func TestUIOverlayMenuManageHistory(t *testing.T) {
+	t.Parallel()
+
 	ta := newTestApp(t, `{"key":"value"}`, []string{".foo", ".bar", ".baz"})
 
 	ta.openMenu()
-	ta.selectMenuItem(2)
+	ta.selectMenuItem(4)
 	ta.waitForText("showing 3 of 3 entries", testActionTimeout)
 	ta.requireText(".foo")
 	ta.requireText(".bar")
@@ -502,10 +547,12 @@ func TestUIOverlayMenuManageHistory(t *testing.T) {
 }
 
 func TestUIOverlayMenuCheatSheet(t *testing.T) {
+	t.Parallel()
+
 	ta := newTestApp(t, `{"key":"value"}`, nil)
 
 	ta.openMenu()
-	ta.selectMenuItem(4)
+	ta.selectMenuItem(6)
 	ta.waitForText("jq cheat sheet", testActionTimeout)
 	ta.requireText("Basics")
 	ta.requireText("identity (return input)")
@@ -519,10 +566,12 @@ func TestUIOverlayMenuCheatSheet(t *testing.T) {
 }
 
 func TestUIOverlayMenuKeybindings(t *testing.T) {
+	t.Parallel()
+
 	ta := newTestApp(t, `{"key":"value"}`, nil)
 
 	ta.openMenu()
-	ta.selectMenuItem(3)
+	ta.selectMenuItem(5)
 	ta.waitForText("Keybindings", testActionTimeout)
 	ta.requireText("submit-filter")
 	ta.requireText("Enter")
