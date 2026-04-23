@@ -18,6 +18,8 @@ func TestDefaultKeymap(t *testing.T) {
 	assert.True(t, keymap.ToggleMenu.Matches(tcell.NewEventKey(tcell.KeyCtrlUnderscore, ' ', tcell.ModNone)))
 	assert.True(t, keymap.ToggleMenu.Matches(tcell.NewEventKey(tcell.KeyRune, '?', tcell.ModCtrl)))
 	assert.True(t, keymap.ToggleMenu.Matches(tcell.NewEventKey(tcell.KeyRune, '_', tcell.ModCtrl)))
+	assert.Empty(t, keymap.CopyFilterToClipboard)
+	assert.Empty(t, keymap.CopyOutputToClipboard)
 	assert.True(t, keymap.PageUp.Matches(tcell.NewEventKey(tcell.KeyRune, 'b', tcell.ModNone)))
 	assert.True(t, keymap.PageUp.Matches(tcell.NewEventKey(tcell.KeyRune, 'v', tcell.ModAlt)))
 	assert.True(t, keymap.LineStart.Matches(tcell.NewEventKey(tcell.KeyRune, '0', tcell.ModNone)))

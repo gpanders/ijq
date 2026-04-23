@@ -212,17 +212,19 @@ type Keymap struct {
 	LineStart   KeyBindings `scfg:"line-start"`
 	LineEnd     KeyBindings `scfg:"line-end"`
 
-	SubmitFilter         KeyBindings `scfg:"submit-filter"`
-	FocusInputPane       KeyBindings `scfg:"focus-input-pane"`
-	FocusOutputPane      KeyBindings `scfg:"focus-output-pane"`
-	FocusFilterInput     KeyBindings `scfg:"focus-filter-input"`
-	NextFocus            KeyBindings `scfg:"next-focus"`
-	PreviousFocus        KeyBindings `scfg:"previous-focus"`
-	NextAutocomplete     KeyBindings `scfg:"next-autocomplete"`
-	PreviousAutocomplete KeyBindings `scfg:"previous-autocomplete"`
-	ToggleInputPane      KeyBindings `scfg:"toggle-input-pane"`
-	SaveFilterHistory    KeyBindings `scfg:"save-filter-history"`
-	ToggleMenu           KeyBindings `scfg:"toggle-menu"`
+	SubmitFilter          KeyBindings `scfg:"submit-filter"`
+	FocusInputPane        KeyBindings `scfg:"focus-input-pane"`
+	FocusOutputPane       KeyBindings `scfg:"focus-output-pane"`
+	FocusFilterInput      KeyBindings `scfg:"focus-filter-input"`
+	NextFocus             KeyBindings `scfg:"next-focus"`
+	PreviousFocus         KeyBindings `scfg:"previous-focus"`
+	NextAutocomplete      KeyBindings `scfg:"next-autocomplete"`
+	PreviousAutocomplete  KeyBindings `scfg:"previous-autocomplete"`
+	ToggleInputPane       KeyBindings `scfg:"toggle-input-pane"`
+	SaveFilterHistory     KeyBindings `scfg:"save-filter-history"`
+	ToggleMenu            KeyBindings `scfg:"toggle-menu"`
+	CopyFilterToClipboard KeyBindings `scfg:"copy-filter-to-clipboard"`
+	CopyOutputToClipboard KeyBindings `scfg:"copy-output-to-clipboard"`
 }
 
 type KeymapEntry struct {

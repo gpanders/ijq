@@ -31,6 +31,7 @@ func TestDefaultConfigPathFallsBackToHome(t *testing.T) {
 
 func TestLoadConfigMissingFile(t *testing.T) {
 	tmp := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmp)
 	t.Setenv("XDG_DATA_HOME", tmp)
 
 	path, err := DefaultConfigPath()
@@ -43,6 +44,7 @@ func TestLoadConfigMissingFile(t *testing.T) {
 	assert.Equal(t, filepath.Join(tmp, "ijq", "history"), string(cfg.HistoryFile))
 	assert.Equal(t, "jq", string(cfg.JQCommand))
 	assert.False(t, bool(cfg.HideInputPane))
+	assert.False(t, cfg.CopyFilterToClipboardOnExit)
 }
 
 func TestLoadConfig(t *testing.T) {
@@ -53,9 +55,12 @@ func TestLoadConfig(t *testing.T) {
 jq-bin /usr/local/bin/jq
 hide-input-pane true
 library-paths /tmp/modules /opt/jq/modules
+copy-filter-to-clipboard-on-exit true
 keymaps {
 	toggle-input-pane Ctrl-T
 	save-filter-history Alt+h
+	copy-filter-to-clipboard Alt+f
+	copy-output-to-clipboard Alt+o
 	toggle-menu Alt+o
 	scroll-to-bottom g
 }
@@ -69,10 +74,13 @@ keymaps {
 	assert.Equal(t, "", string(cfg.HistoryFile))
 	assert.Equal(t, "/usr/local/bin/jq", string(cfg.JQCommand))
 	assert.True(t, bool(cfg.HideInputPane))
+	assert.True(t, cfg.CopyFilterToClipboardOnExit)
 	assert.Equal(t, options.LibraryPaths{"/tmp/modules", "/opt/jq/modules"}, cfg.LibraryPaths)
 
 	assert.Equal(t, KeyBindings{{key: tcell.KeyCtrlT}}, cfg.Keymap.ToggleInputPane)
 	assert.Equal(t, KeyBindings{{key: tcell.KeyRune, rune: 'h', mods: tcell.ModAlt}}, cfg.Keymap.SaveFilterHistory)
+	assert.Equal(t, KeyBindings{{key: tcell.KeyRune, rune: 'f', mods: tcell.ModAlt}}, cfg.Keymap.CopyFilterToClipboard)
+	assert.Equal(t, KeyBindings{{key: tcell.KeyRune, rune: 'o', mods: tcell.ModAlt}}, cfg.Keymap.CopyOutputToClipboard)
 	assert.Equal(t, KeyBindings{{key: tcell.KeyRune, rune: 'o', mods: tcell.ModAlt}}, cfg.Keymap.ToggleMenu)
 	assert.Equal(t, KeyBindings{{key: tcell.KeyRune, rune: 'g'}}, cfg.Keymap.ScrollToBottom)
 	assert.Equal(t, DefaultKeymap().SubmitFilter, cfg.Keymap.SubmitFilter)

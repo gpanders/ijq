@@ -68,10 +68,8 @@ func newTestApp(t *testing.T, input string, historyEntries []string) *testApp {
 		config: cfg,
 	}
 
-	app := createApp(doc)
 	screen := tcell.NewSimulationScreen("")
-	require.NoError(t, screen.Init())
-	app.SetScreen(screen)
+	app := createApp(doc, screen)
 	screen.SetSize(testScreenWidth, testScreenHeight)
 
 	ta := &testApp{
@@ -415,6 +413,8 @@ func TestUIOverlayMenuToggle(t *testing.T) {
 	ta.openMenu()
 	ta.requireText("Configure")
 	ta.requireText("Save current filter to history")
+	ta.requireText("Copy filter text to clipboard")
+	ta.requireText("Copy output to clipboard")
 	ta.requireText("Manage history")
 	ta.requireText("Keybindings")
 	ta.requireText("Cheat sheet")
@@ -471,7 +471,7 @@ func TestUIOverlayMenuManageHistory(t *testing.T) {
 	ta := newTestApp(t, `{"key":"value"}`, []string{".foo", ".bar", ".baz"})
 
 	ta.openMenu()
-	ta.selectMenuItem(2)
+	ta.selectMenuItem(4)
 	ta.waitForText("showing 3 of 3 entries", testActionTimeout)
 	ta.requireText(".foo")
 	ta.requireText(".bar")
@@ -505,7 +505,7 @@ func TestUIOverlayMenuCheatSheet(t *testing.T) {
 	ta := newTestApp(t, `{"key":"value"}`, nil)
 
 	ta.openMenu()
-	ta.selectMenuItem(4)
+	ta.selectMenuItem(6)
 	ta.waitForText("jq cheat sheet", testActionTimeout)
 	ta.requireText("Basics")
 	ta.requireText("identity (return input)")
@@ -522,7 +522,7 @@ func TestUIOverlayMenuKeybindings(t *testing.T) {
 	ta := newTestApp(t, `{"key":"value"}`, nil)
 
 	ta.openMenu()
-	ta.selectMenuItem(3)
+	ta.selectMenuItem(5)
 	ta.waitForText("Keybindings", testActionTimeout)
 	ta.requireText("submit-filter")
 	ta.requireText("Enter")

@@ -19,7 +19,7 @@ const (
 	keybindingsPage   = "overlay-keybindings"
 
 	smallWidth    = 50
-	menuHeight    = 10
+	menuHeight    = 12
 	historyHeight = 15
 )
 
@@ -64,6 +64,8 @@ type Callbacks struct {
 	ConfigureRows              func() []string
 	ToggleConfigureRow         func(option options.Option)
 	SaveCurrentFilterToHistory func() (status string, err error)
+	CopyFilterToClipboard      func() error
+	CopyOutputToClipboard      func() error
 	LoadHistoryEntries         func() []string
 	DeleteHistoryEntryAt       func(index int) error
 	ApplyHistoryEntry          func(expr string)
@@ -128,6 +130,8 @@ func NewController(app *tview.Application, pages *tview.Pages, pageName string, 
 	c.rootMenu = newList("Menu")
 	c.rootMenu.AddItem("Configure", "", 0, nil)
 	c.rootMenu.AddItem("Save current filter to history", "", 0, nil)
+	c.rootMenu.AddItem("Copy filter text to clipboard", "", 0, nil)
+	c.rootMenu.AddItem("Copy output to clipboard", "", 0, nil)
 	c.rootMenu.AddItem("Manage history", "", 0, nil)
 	c.rootMenu.AddItem("Keybindings", "", 0, nil)
 	c.rootMenu.AddItem("Cheat sheet", "", 0, nil)
@@ -426,10 +430,14 @@ func (c *Controller) activateRootMenu(index int) {
 	case 1:
 		c.saveCurrentFilterToHistory()
 	case 2:
-		c.showHistory()
+		c.copyFilterToClipboard()
 	case 3:
-		c.showKeybindings()
+		c.copyOutputToClipboard()
 	case 4:
+		c.showHistory()
+	case 5:
+		c.showKeybindings()
+	case 6:
 		c.showCheatSheet()
 	}
 }
@@ -496,6 +504,34 @@ func (c *Controller) saveCurrentFilterToHistory() {
 	}
 
 	c.showRootMenu(status)
+}
+
+func (c *Controller) copyFilterToClipboard() {
+	if c.callbacks.CopyFilterToClipboard == nil {
+		c.showRootMenu("copy action unavailable")
+		return
+	}
+
+	if err := c.callbacks.CopyFilterToClipboard(); err != nil {
+		c.showRootMenu(err.Error())
+		return
+	}
+
+	c.showRootMenu("filter copied to clipboard")
+}
+
+func (c *Controller) copyOutputToClipboard() {
+	if c.callbacks.CopyOutputToClipboard == nil {
+		c.showRootMenu("copy action unavailable")
+		return
+	}
+
+	if err := c.callbacks.CopyOutputToClipboard(); err != nil {
+		c.showRootMenu(err.Error())
+		return
+	}
+
+	c.showRootMenu("output copied to clipboard")
 }
 
 func (c *Controller) showHistory() {

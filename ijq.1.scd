@@ -88,6 +88,12 @@ precedence.
 *hide-input-pane* _bool_
 	If true, start with the input (left) viewing pane hidden.
 
+*copy-filter-to-clipboard-on-exit* _bool_
+	If true, copy the current filter to the clipboard when exiting with the
+	*submit-filter* action (default: *Return*). The clipboard is only
+	written after the output is written successfully to
+	stdout. Exiting with *Ctrl-C* never writes to the clipboard.
+
 *keymaps*
 	Section containing key bindings. Any entry not set keeps its built-in
 	default value.
@@ -106,7 +112,8 @@ precedence.
 	*cursor-right*, *cursor-left*, *focus-input-pane*, *focus-output-pane*,
 	*focus-filter-input*, *next-focus*, *previous-focus*,
 	*toggle-input-pane*, *save-filter-history*, *next-autocomplete*,
-	*previous-autocomplete*, *toggle-menu*.
+	*previous-autocomplete*, *toggle-menu*, *copy-filter-to-clipboard*,
+	*copy-output-to-clipboard*.
 
 # KEY BINDINGS
 
