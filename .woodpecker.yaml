@@ -1,7 +1,10 @@
 steps:
   test:
     when:
-      - event: [push, pull_request, tag]
+      - event: push
+        branch: master
+      - event: pull_request
+      - event: tag
     image: golang:1.26
     depends_on: []
     commands:
@@ -9,7 +12,10 @@ steps:
 
   race-test:
     when:
-      - event: [push, pull_request, tag]
+      - event: push
+        branch: master
+      - event: pull_request
+      - event: tag
     image: golang:1.26
     depends_on: []
     commands:
