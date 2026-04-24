@@ -1,0 +1,64 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: codeberg-tiny
+    env:
+      CGO_ENABLED: "0"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Install release dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends make scdoc
+      - name: Build release archives
+        run: |
+          set -euo pipefail
+
+          version=${FORGEJO_REF_NAME#v}
+          release_dir=dist/release
+
+          rm -rf "$release_dir" "ijq-$version"
+          mkdir -p "$release_dir"
+          mkdir "ijq-$version"
+
+          build() {
+            os="$1"
+            arch="$2"
+
+            make GOOS="$os" GOARCH="$arch" clean all
+            cp ijq ijq.1 COPYING "ijq-$version/"
+
+            if [ "$os" = windows ]; then
+              mv "ijq-$version/ijq" "ijq-$version/ijq.exe"
+            fi
+
+            tar czf "$release_dir/ijq-$version-$os-$arch.tar.gz" "ijq-$version"
+          }
+
+          build darwin amd64
+          build darwin arm64
+          build linux amd64
+          build linux arm64
+          build windows amd64
+      - name: Create release and upload archives
+        uses: actions/forgejo-release@v2.11.1
+        with:
+          direction: upload
+          url: ${{ forgejo.server_url }}
+          repo: ${{ forgejo.repository }}
+          token: ${{ secrets.FORGEJO_TOKEN }}
+          tag: ${{ forgejo.ref_name }}
+          release-dir: dist/release
+          release-notes: Release ${{ forgejo.ref_name }}
