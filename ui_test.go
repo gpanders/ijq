@@ -397,6 +397,20 @@ func TestUIFocusMovement(t *testing.T) {
 	ta.waitForText(expectedFilter, testActionTimeout)
 }
 
+func TestUIFocusMovementWithInputPaneHidden(t *testing.T) {
+	t.Parallel()
+
+	ta := newTestApp(t, generateLargeInput(100), nil)
+
+	ta.postKey(tcell.KeyCtrlO, tcell.ModNone)
+	ta.waitForNoText("Input (Top)", testActionTimeout)
+
+	ta.postKey(tcell.KeyUp, tcell.ModShift)
+	ta.waitForTextViewFocus(testActionTimeout)
+	ta.postRune('G')
+	ta.waitForText("Output (Bot)", testActionTimeout)
+}
+
 func TestUIScrollKeybindingsAndIndicator(t *testing.T) {
 	t.Parallel()
 

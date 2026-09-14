@@ -907,10 +907,13 @@ func createApp(doc Document, screen tcell.Screen) *tview.Application {
 		}
 
 		if keymap.FocusInputPane.Matches(event) {
-			if !doc.options.HideInputPane {
-				app.SetFocus(inputView)
+			if doc.options.HideInputPane {
+				app.SetFocus(outputView)
 				return nil
 			}
+
+			app.SetFocus(inputView)
+			return nil
 		}
 
 		if keymap.FocusOutputPane.Matches(event) {
