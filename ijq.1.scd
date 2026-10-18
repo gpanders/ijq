@@ -110,7 +110,7 @@ precedence.
 	*page-down*, *page-up*, *scroll-to-top*, *scroll-to-bottom*,
 	*half-page-up*, *half-page-down*, *line-start*, *line-end*,
 	*cursor-right*, *cursor-left*, *focus-input-pane*, *focus-output-pane*,
-	*focus-filter-input*, *next-focus*, *previous-focus*,
+	*focus-filter-input*, *next-focus*, *previous-focus*, *open-history*,
 	*toggle-input-pane*, *save-filter-history*, *next-autocomplete*,
 	*previous-autocomplete*, *toggle-menu*, *copy-filter-to-clipboard*,
 	*copy-output-to-clipboard*.

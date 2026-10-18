@@ -275,6 +275,14 @@ func (c *Controller) Close() {
 	}
 }
 
+func (c *Controller) OpenHistory() {
+	if !c.open {
+		c.Open()
+	}
+
+	c.showHistory()
+}
+
 func (c *Controller) HandleInput(event *tcell.EventKey) *tcell.EventKey {
 	if !c.open {
 		return event

@@ -40,6 +40,17 @@ func TestHandleInputReturnsEventWhenClosed(t *testing.T) {
 	assert.Equal(t, event, controller.HandleInput(event))
 }
 
+func TestOpenHistory(t *testing.T) {
+	t.Parallel()
+
+	controller := NewController(tview.NewApplication(), tview.NewPages(), "overlay", Callbacks{})
+
+	controller.OpenHistory()
+
+	assert.True(t, controller.IsOpen())
+	assert.Equal(t, modeHistoryList, controller.mode)
+}
+
 func TestHandleInputGlobalNavigationAndClose(t *testing.T) {
 	t.Parallel()
 

@@ -220,6 +220,7 @@ type Keymap struct {
 	PreviousFocus         KeyBindings `scfg:"previous-focus"`
 	NextAutocomplete      KeyBindings `scfg:"next-autocomplete"`
 	PreviousAutocomplete  KeyBindings `scfg:"previous-autocomplete"`
+	OpenHistory           KeyBindings `scfg:"open-history"`
 	ToggleInputPane       KeyBindings `scfg:"toggle-input-pane"`
 	SaveFilterHistory     KeyBindings `scfg:"save-filter-history"`
 	ToggleMenu            KeyBindings `scfg:"toggle-menu"`

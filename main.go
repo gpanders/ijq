@@ -786,6 +786,11 @@ func createApp(doc Document, screen tcell.Screen) *tview.Application {
 			return nil
 		}
 
+		if keymap.OpenHistory.Matches(event) {
+			overlayPopup.OpenHistory()
+			return nil
+		}
+
 		if keymap.SaveFilterHistory.Matches(event) {
 			status, expression, err := saveCurrentFilterToHistory()
 			if err != nil {

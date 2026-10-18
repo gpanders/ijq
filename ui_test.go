@@ -560,6 +560,19 @@ func TestUIOverlayMenuManageHistory(t *testing.T) {
 	ta.requireNoText(".bar")
 }
 
+func TestUIOpenHistoryKeybinding(t *testing.T) {
+	t.Parallel()
+
+	cfg := DefaultConfig()
+	cfg.Keymap.OpenHistory = KeyBindings{{key: tcell.KeyCtrlH}}
+	ta := newTestAppWithConfig(t, `{"key":"value"}`, []string{".foo"}, cfg)
+
+	ta.postKey(tcell.KeyCtrlH, tcell.ModNone)
+	ta.waitForText("showing 1 of 1 entries", testActionTimeout)
+	ta.requireText(".foo")
+	ta.requireNoText("Manage history")
+}
+
 func TestUIOverlayMenuCheatSheet(t *testing.T) {
 	t.Parallel()
 

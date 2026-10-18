@@ -20,6 +20,7 @@ func TestDefaultKeymap(t *testing.T) {
 	assert.True(t, keymap.ToggleMenu.Matches(tcell.NewEventKey(tcell.KeyRune, '_', tcell.ModCtrl)))
 	assert.Empty(t, keymap.CopyFilterToClipboard)
 	assert.Empty(t, keymap.CopyOutputToClipboard)
+	assert.Empty(t, keymap.OpenHistory)
 	assert.True(t, keymap.PageUp.Matches(tcell.NewEventKey(tcell.KeyRune, 'b', tcell.ModNone)))
 	assert.True(t, keymap.PageUp.Matches(tcell.NewEventKey(tcell.KeyRune, 'v', tcell.ModAlt)))
 	assert.True(t, keymap.LineStart.Matches(tcell.NewEventKey(tcell.KeyRune, '0', tcell.ModNone)))
@@ -34,12 +35,14 @@ func TestKeymapEntries(t *testing.T) {
 		SubmitFilter:         KeyBindings{{key: tcell.KeyEnter}},
 		NextAutocomplete:     KeyBindings{{key: tcell.KeyTab}},
 		PreviousAutocomplete: KeyBindings{{key: tcell.KeyBacktab}},
+		OpenHistory:          KeyBindings{{key: tcell.KeyCtrlH}},
 		ToggleMenu:           KeyBindings{{key: tcell.KeyCtrlUnderscore}},
 	}
 
 	assert.Equal(t, []KeymapEntry{
 		{Action: "move-down", Keybinding: "j"},
 		{Action: "next-autocomplete", Keybinding: "Tab"},
+		{Action: "open-history", Keybinding: "Ctrl-h"},
 		{Action: "page-down", Keybinding: "f, F"},
 		{Action: "previous-autocomplete", Keybinding: "Shift-Tab"},
 		{Action: "submit-filter", Keybinding: "Enter"},
