@@ -10,7 +10,7 @@ mandir = $(prefix)/share/man
 
 SRCS = $(filter-out %_test.go,$(wildcard *.go))
 
-VERSION = 1.4.0
+VERSION = 1.4.1
 
 .PHONY: all
 all: ijq docs
