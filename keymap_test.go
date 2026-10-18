@@ -35,14 +35,14 @@ func TestKeymapEntries(t *testing.T) {
 		SubmitFilter:         KeyBindings{{key: tcell.KeyEnter}},
 		NextAutocomplete:     KeyBindings{{key: tcell.KeyTab}},
 		PreviousAutocomplete: KeyBindings{{key: tcell.KeyBacktab}},
-		OpenHistory:          KeyBindings{{key: tcell.KeyCtrlH}},
+		OpenHistory:          KeyBindings{{key: tcell.KeyCtrlY}},
 		ToggleMenu:           KeyBindings{{key: tcell.KeyCtrlUnderscore}},
 	}
 
 	assert.Equal(t, []KeymapEntry{
 		{Action: "move-down", Keybinding: "j"},
 		{Action: "next-autocomplete", Keybinding: "Tab"},
-		{Action: "open-history", Keybinding: "Ctrl-h"},
+		{Action: "open-history", Keybinding: "Ctrl-Y"},
 		{Action: "page-down", Keybinding: "f, F"},
 		{Action: "previous-autocomplete", Keybinding: "Shift-Tab"},
 		{Action: "submit-filter", Keybinding: "Enter"},
