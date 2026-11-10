@@ -130,7 +130,7 @@ func newFlagSet(name string, options *options.Options, output io.Writer) (*flag.
 	flagSet.SetOutput(output)
 	flagSet.Usage = func() {
 		fmt.Fprintf(output, "ijq - interactive jq\n\n")
-		fmt.Fprintf(output, "Usage: ijq [-cnsrRMSV] [-f file] [filter] [files ...]\n\n")
+		fmt.Fprintf(output, "Usage: ijq [-cnsrRMSVA] [-f file] [filter] [files ...]\n\n")
 		fmt.Fprintf(output, "Options:\n")
 
 		flagSet.VisitAll(func(f *flag.Flag) {
@@ -160,6 +160,7 @@ func newFlagSet(name string, options *options.Options, output io.Writer) (*flag.
 	flagSet.Var(&options.Monochrome, options.Monochrome.Flag(), "disable colored output")
 	flagSet.Var(&options.SortKeys, options.SortKeys.Flag(), "sort keys of each object on output")
 	flagSet.Var(&options.LibraryPaths, options.LibraryPaths.Flag(), "search modules from the `dir`ectory")
+	flagSet.Var(&options.FilterAfterOutput, options.FilterAfterOutput.Flag(), "print filter after output")
 
 	// Legacy options kept for backward compatibility.
 	flagSet.Var(&options.HideInputPane, options.HideInputPane.Flag(), "hide input (left) viewing pane")
@@ -363,7 +364,9 @@ func createApp(doc Document, screen tcell.Screen) *tview.Application {
 		if clipboardErr != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to copy filter to clipboard: %v\n", clipboardErr)
 		}
-		fmt.Fprintln(os.Stderr, doc.filter)
+		if !doc.options.FilterAfterOutput {
+			fmt.Fprintln(os.Stderr, doc.filter)
+		}
 
 		// Enable or disable colors depending on if stdout is a tty, respecting options set
 		// by the user
@@ -376,7 +379,11 @@ func createApp(doc Document, screen tcell.Screen) *tview.Application {
 
 		filterHistory.Add(doc.filter)
 
-		if _, err := doc.WriteTo(os.Stdout); err != nil {
+		_, err := doc.WriteTo(os.Stdout)
+		if doc.options.FilterAfterOutput {
+			fmt.Fprintln(os.Stderr, doc.filter)
+		}
+		if err != nil {
 			log.Fatalln(err)
 		}
 	}
@@ -658,6 +665,10 @@ func createApp(doc Document, screen tcell.Screen) *tview.Application {
 				} else {
 					viewFlex.ResizeItem(inputView, 0, 1)
 				}
+			case *options.FilterAfterOutput:
+				mutex.Lock()
+				doc.options.FilterAfterOutput = !doc.options.FilterAfterOutput
+				mutex.Unlock()
 			default:
 				queueDocumentUpdate(func(next *Document) {
 					next.options.Toggle(option)
@@ -1040,10 +1051,11 @@ func main() {
 	}
 
 	options := options.Options{
-		HistoryFile:   config.HistoryFile,
-		JQCommand:     config.JQCommand,
-		HideInputPane: config.HideInputPane,
-		LibraryPaths:  config.LibraryPaths,
+		HistoryFile:       config.HistoryFile,
+		JQCommand:         config.JQCommand,
+		HideInputPane:     config.HideInputPane,
+		FilterAfterOutput: config.FilterAfterOutput,
+		LibraryPaths:      config.LibraryPaths,
 	}
 
 	filter, args := parseArgs(&options)

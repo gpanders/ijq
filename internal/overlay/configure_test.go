@@ -20,7 +20,7 @@ func TestConfigureRowsContainsOnlyBoolOptionsInStructOrder(t *testing.T) {
 		flags = append(flags, option.Flag())
 	}
 
-	assert.Equal(t, []string{"c", "n", "s", "r", "j", "a", "R", "M", "C", "S", "hide-input-pane"}, flags)
+	assert.Equal(t, []string{"c", "n", "s", "r", "j", "a", "R", "M", "C", "S", "A", "hide-input-pane"}, flags)
 }
 
 func TestConfigureRowsExcludesNonBoolOptions(t *testing.T) {

@@ -18,10 +18,21 @@ func TestUsageHidesLegacyFlags(t *testing.T) {
 
 	help := out.String()
 	assert.Contains(t, help, "-c")
+	assert.Contains(t, help, "-A")
 	assert.Contains(t, help, "-f")
 	assert.NotContains(t, help, "-H")
 	assert.NotContains(t, help, "-jqbin")
 	assert.NotContains(t, help, "-hide-input-pane")
+}
+
+func TestFilterAfterOutputFlag(t *testing.T) {
+	opts := options.Options{}
+
+	var out bytes.Buffer
+	flagSet, _, _ := newFlagSet("ijq", &opts, &out)
+	err := flagSet.Parse([]string{"-A"})
+	assert.NoError(t, err)
+	assert.Equal(t, options.FilterAfterOutput(true), opts.FilterAfterOutput)
 }
 
 func TestLegacyFlagsRemainSupported(t *testing.T) {

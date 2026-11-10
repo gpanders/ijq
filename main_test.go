@@ -21,6 +21,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -211,4 +212,112 @@ func TestParseArgsVersionFlagPrintsAndExits(t *testing.T) {
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err)
 	assert.Contains(t, string(out), "ijq test-version")
+}
+
+func TestSubmitFilterPrintsFilterBeforeOutputByDefault(t *testing.T) {
+	t.Parallel()
+
+	if os.Getenv("IJQ_SUBMIT_FILTER_BEFORE_HELPER") == "1" {
+		cfg := DefaultConfig()
+		cfg.HistoryFile = ""
+		cfg.JQCommand = "./testdata/catok"
+		doc := Document{
+			input:  `{"foo":1}` + "\n",
+			filter: ".foo",
+			options: options.Options{
+				HistoryFile: cfg.HistoryFile,
+				JQCommand:   cfg.JQCommand,
+			},
+			config: cfg,
+		}
+		screen := tcell.NewSimulationScreen("")
+		app := createApp(doc, screen)
+		go func() {
+			app.QueueUpdate(func() {
+				app.QueueEvent(tcell.NewEventKey(tcell.KeyEnter, ' ', tcell.ModNone))
+			})
+		}()
+		_ = app.Run()
+		os.Exit(0)
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestSubmitFilterPrintsFilterBeforeOutputByDefault")
+	cmd.Env = append(os.Environ(), "IJQ_SUBMIT_FILTER_BEFORE_HELPER=1")
+
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err)
+	assert.Equal(t, ".foo\n{\"foo\":1}\n", string(out))
+}
+
+func TestSubmitFilterPrintsFilterAfterOutputWithFlag(t *testing.T) {
+	t.Parallel()
+
+	if os.Getenv("IJQ_SUBMIT_FILTER_AFTER_HELPER") == "1" {
+		cfg := DefaultConfig()
+		cfg.HistoryFile = ""
+		cfg.JQCommand = "./testdata/catok"
+		doc := Document{
+			input:  `{"foo":1}` + "\n",
+			filter: ".foo",
+			options: options.Options{
+				HistoryFile:       cfg.HistoryFile,
+				JQCommand:         cfg.JQCommand,
+				FilterAfterOutput: true,
+			},
+			config: cfg,
+		}
+		screen := tcell.NewSimulationScreen("")
+		app := createApp(doc, screen)
+		go func() {
+			app.QueueUpdate(func() {
+				app.QueueEvent(tcell.NewEventKey(tcell.KeyEnter, ' ', tcell.ModNone))
+			})
+		}()
+		_ = app.Run()
+		os.Exit(0)
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestSubmitFilterPrintsFilterAfterOutputWithFlag")
+	cmd.Env = append(os.Environ(), "IJQ_SUBMIT_FILTER_AFTER_HELPER=1")
+
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err)
+	assert.Equal(t, "{\"foo\":1}\n.foo\n", string(out))
+}
+
+func TestSubmitFilterPrintsFilterAndErrorWhenFilterAfterOutputFails(t *testing.T) {
+	t.Parallel()
+
+	if os.Getenv("IJQ_SUBMIT_FILTER_AFTER_ERROR_HELPER") == "1" {
+		log.SetFlags(0)
+		cfg := DefaultConfig()
+		cfg.HistoryFile = ""
+		cfg.JQCommand = "./testdata/caterror"
+		doc := Document{
+			input:  `{"foo":1}` + "\n",
+			filter: ".foo[",
+			options: options.Options{
+				HistoryFile:       cfg.HistoryFile,
+				JQCommand:         cfg.JQCommand,
+				FilterAfterOutput: true,
+			},
+			config: cfg,
+		}
+		screen := tcell.NewSimulationScreen("")
+		app := createApp(doc, screen)
+		go func() {
+			app.QueueUpdate(func() {
+				app.QueueEvent(tcell.NewEventKey(tcell.KeyEnter, ' ', tcell.ModNone))
+			})
+		}()
+		_ = app.Run()
+		os.Exit(0)
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestSubmitFilterPrintsFilterAndErrorWhenFilterAfterOutputFails")
+	cmd.Env = append(os.Environ(), "IJQ_SUBMIT_FILTER_AFTER_ERROR_HELPER=1")
+
+	out, err := cmd.CombinedOutput()
+	require.Error(t, err)
+	assert.True(t, strings.HasSuffix(string(out), ".foo[\nexit status 1\n"), "unexpected output: %q", string(out))
 }

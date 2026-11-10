@@ -38,6 +38,11 @@ func (o Options) ToSlice() []string {
 	var flags []string
 
 	o.Each(func(option Option) {
+		switch option.(type) {
+		case *FilterAfterOutput:
+			return
+		}
+
 		flagName := option.Flag()
 		if len(flagName) != 1 {
 			return

@@ -6,7 +6,7 @@ ijq - interactive jq
 
 # SYNOPSIS
 
-*ijq* [*-cnsrjaRMCSV*] [*-f* _file_] [_filter_] [_files ..._]
+*ijq* [*-cnsrjaRMCSVA*] [*-f* _file_] [_filter_] [_files ..._]
 
 # DESCRIPTION
 
@@ -65,6 +65,10 @@ All of the options mirror their counterparts in *jq*. The options are:
 *-S*
 	Output the fields of each object with the fields in sorted order.
 
+*-A*
+	Write the filter to standard error after writing the filtered output to
+	standard output, instead of before.
+
 *-f* _file_
 	Read the filter from _file_. When this option is used, all positional
 	arguments (if any) are interpreted as input files.
@@ -87,6 +91,11 @@ precedence.
 
 *hide-input-pane* _bool_
 	If true, start with the input (left) viewing pane hidden.
+
+*filter-after-output* _bool_
+	If true, write the current filter to stderr after writing the filtered
+	output to stdout when exiting with the *submit-filter* action (default:
+	*Return*).
 
 *copy-filter-to-clipboard-on-exit* _bool_
 	If true, copy the current filter to the clipboard when exiting with the

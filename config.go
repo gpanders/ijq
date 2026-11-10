@@ -16,12 +16,13 @@ import (
 )
 
 type Config struct {
-	HistoryFile                 options.HistoryFile   `scfg:"history-file"`
-	JQCommand                   options.JQCommand     `scfg:"jq-bin"`
-	HideInputPane               options.HideInputPane `scfg:"hide-input-pane"`
-	LibraryPaths                options.LibraryPaths  `scfg:"library-paths"`
-	CopyFilterToClipboardOnExit bool                  `scfg:"copy-filter-to-clipboard-on-exit"`
-	Keymap                      Keymap                `scfg:"keymaps"`
+	HistoryFile                 options.HistoryFile       `scfg:"history-file"`
+	JQCommand                   options.JQCommand         `scfg:"jq-bin"`
+	HideInputPane               options.HideInputPane     `scfg:"hide-input-pane"`
+	FilterAfterOutput           options.FilterAfterOutput `scfg:"filter-after-output"`
+	LibraryPaths                options.LibraryPaths      `scfg:"library-paths"`
+	CopyFilterToClipboardOnExit bool                      `scfg:"copy-filter-to-clipboard-on-exit"`
+	Keymap                      Keymap                    `scfg:"keymaps"`
 }
 
 func DefaultConfig() Config {
@@ -38,10 +39,11 @@ func DefaultConfig() Config {
 	}
 
 	return Config{
-		HistoryFile:   historyFile,
-		JQCommand:     "jq",
-		HideInputPane: false,
-		Keymap:        DefaultKeymap(),
+		HistoryFile:       historyFile,
+		JQCommand:         "jq",
+		HideInputPane:     false,
+		FilterAfterOutput: false,
+		Keymap:            DefaultKeymap(),
 	}
 }
 

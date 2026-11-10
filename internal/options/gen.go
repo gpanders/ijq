@@ -29,6 +29,7 @@ var data = []Option{
 	{Name: "ForceColor", Flag: "C", Type: "bool", Description: "Force color"},
 	{Name: "SortKeys", Flag: "S", Type: "bool", Description: "Sort keys"},
 	{Name: "LibraryPaths", Flag: "L", Type: "[]string", Description: "Add path to library search path"},
+	{Name: "FilterAfterOutput", Flag: "A", Type: "bool", Description: "Print filter after output"},
 	{Name: "HideInputPane", Flag: "hide-input-pane", Type: "bool", Description: "Hide input (left) viewing pane"},
 	{Name: "JQCommand", Flag: "jqbin", Type: "string", Description: "name of or path to jq binary to use"},
 	{Name: "HistoryFile", Flag: "H", Type: "string", Description: "set path to history file. Set to '' to disable history"},

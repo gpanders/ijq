@@ -32,9 +32,10 @@ func TestOptionsToSliceIncludesLibraryPaths(t *testing.T) {
 
 func TestOptionsToSliceExcludesNonRuntimeFlags(t *testing.T) {
 	opts := Options{
-		HideInputPane: true,
-		JQCommand:     "custom-jq",
-		HistoryFile:   "/tmp/history",
+		FilterAfterOutput: true,
+		HideInputPane:     true,
+		JQCommand:         "custom-jq",
+		HistoryFile:       "/tmp/history",
 	}
 
 	assert.Empty(t, opts.ToSlice())

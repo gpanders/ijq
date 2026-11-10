@@ -497,6 +497,7 @@ func TestUIOverlayMenuConfigure(t *testing.T) {
 		"Monochrome output (-M)",
 		"Force color (-C)",
 		"Sort keys (-S)",
+		"Print filter after output (-A)",
 		"Hide input (left) viewing pane (-hide-input-pane)",
 	}
 

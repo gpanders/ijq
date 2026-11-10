@@ -27,6 +27,8 @@ var (
 	_ encoding.TextUnmarshaler = (*SortKeys)(nil)
 	_ Option                   = (*LibraryPaths)(nil)
 	_ encoding.TextUnmarshaler = (*LibraryPaths)(nil)
+	_ Option                   = (*FilterAfterOutput)(nil)
+	_ encoding.TextUnmarshaler = (*FilterAfterOutput)(nil)
 	_ Option                   = (*HideInputPane)(nil)
 	_ encoding.TextUnmarshaler = (*HideInputPane)(nil)
 	_ Option                   = (*JQCommand)(nil)
@@ -36,37 +38,39 @@ var (
 )
 
 type (
-	CompactOutput bool
-	NullInput     bool
-	Slurp         bool
-	RawOutput     bool
-	JoinOutput    bool
-	ASCIIOutput   bool
-	RawInput      bool
-	Monochrome    bool
-	ForceColor    bool
-	SortKeys      bool
-	LibraryPaths  []string
-	HideInputPane bool
-	JQCommand     string
-	HistoryFile   string
+	CompactOutput     bool
+	NullInput         bool
+	Slurp             bool
+	RawOutput         bool
+	JoinOutput        bool
+	ASCIIOutput       bool
+	RawInput          bool
+	Monochrome        bool
+	ForceColor        bool
+	SortKeys          bool
+	LibraryPaths      []string
+	FilterAfterOutput bool
+	HideInputPane     bool
+	JQCommand         string
+	HistoryFile       string
 )
 
 type Options struct {
-	CompactOutput CompactOutput
-	NullInput     NullInput
-	Slurp         Slurp
-	RawOutput     RawOutput
-	JoinOutput    JoinOutput
-	ASCIIOutput   ASCIIOutput
-	RawInput      RawInput
-	Monochrome    Monochrome
-	ForceColor    ForceColor
-	SortKeys      SortKeys
-	LibraryPaths  LibraryPaths
-	HideInputPane HideInputPane
-	JQCommand     JQCommand
-	HistoryFile   HistoryFile
+	CompactOutput     CompactOutput
+	NullInput         NullInput
+	Slurp             Slurp
+	RawOutput         RawOutput
+	JoinOutput        JoinOutput
+	ASCIIOutput       ASCIIOutput
+	RawInput          RawInput
+	Monochrome        Monochrome
+	ForceColor        ForceColor
+	SortKeys          SortKeys
+	LibraryPaths      LibraryPaths
+	FilterAfterOutput FilterAfterOutput
+	HideInputPane     HideInputPane
+	JQCommand         JQCommand
+	HistoryFile       HistoryFile
 }
 
 func (CompactOutput) String() string {
@@ -272,6 +276,25 @@ func (option *LibraryPaths) Set(value string) error {
 }
 
 func (option *LibraryPaths) UnmarshalText(text []byte) error {
+	return unmarshalTextValue(option, text)
+}
+
+func (FilterAfterOutput) String() string {
+	return "Print filter after output"
+}
+
+func (FilterAfterOutput) Flag() string {
+	return "A"
+}
+func (option *FilterAfterOutput) Set(value string) error {
+	return setBoolOption(option, value)
+}
+
+func (option *FilterAfterOutput) IsBoolFlag() bool {
+	return true
+}
+
+func (option *FilterAfterOutput) UnmarshalText(text []byte) error {
 	return unmarshalTextValue(option, text)
 }
 

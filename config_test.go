@@ -45,6 +45,7 @@ func TestLoadConfigMissingFile(t *testing.T) {
 	assert.Equal(t, filepath.Join(tmp, "ijq", "history"), string(cfg.HistoryFile))
 	assert.Equal(t, "jq", string(cfg.JQCommand))
 	assert.False(t, bool(cfg.HideInputPane))
+	assert.False(t, bool(cfg.FilterAfterOutput))
 	assert.False(t, cfg.CopyFilterToClipboardOnExit)
 }
 
@@ -57,6 +58,7 @@ func TestLoadConfig(t *testing.T) {
 	raw := `history-file ""
 jq-bin /usr/local/bin/jq
 hide-input-pane true
+filter-after-output true
 library-paths /tmp/modules /opt/jq/modules
 copy-filter-to-clipboard-on-exit true
 keymaps {
@@ -77,6 +79,7 @@ keymaps {
 	assert.Equal(t, "", string(cfg.HistoryFile))
 	assert.Equal(t, "/usr/local/bin/jq", string(cfg.JQCommand))
 	assert.True(t, bool(cfg.HideInputPane))
+	assert.True(t, bool(cfg.FilterAfterOutput))
 	assert.True(t, cfg.CopyFilterToClipboardOnExit)
 	assert.Equal(t, options.LibraryPaths{"/tmp/modules", "/opt/jq/modules"}, cfg.LibraryPaths)
 
